@@ -39,5 +39,7 @@ public partial class User
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
+    public virtual ICollection<UserAddress> UserAddresses { get; set; } = new List<UserAddress>();
+
     public virtual ICollection<UserPlant> UserPlants { get; set; } = new List<UserPlant>();
 }

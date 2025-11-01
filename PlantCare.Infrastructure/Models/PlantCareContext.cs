@@ -37,10 +37,11 @@ public partial class PlantCareContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    public virtual DbSet<UserAddress> UserAddresses { get; set; }
+
     public virtual DbSet<UserPlant> UserPlants { get; set; }
 
-   
-
+    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ActivityLog>(entity =>
@@ -266,6 +267,24 @@ public partial class PlantCareContext : DbContext
                 .HasMaxLength(20)
                 .HasDefaultValue("Customer");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+        });
+
+        modelBuilder.Entity<UserAddress>(entity =>
+        {
+            entity.HasKey(e => e.AddressId).HasName("PK__UserAddr__091C2A1B85AB65D5");
+
+            entity.Property(e => e.AddressId).HasColumnName("AddressID");
+            entity.Property(e => e.AddressLine).HasMaxLength(255);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.IsDefault).HasDefaultValue(false);
+            entity.Property(e => e.Phone).HasMaxLength(20);
+            entity.Property(e => e.RecipientName).HasMaxLength(100);
+            entity.Property(e => e.UserId).HasColumnName("UserID");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserAddresses)
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK__UserAddre__UserI__17F790F9");
         });
 
         modelBuilder.Entity<UserPlant>(entity =>
