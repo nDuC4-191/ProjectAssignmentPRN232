@@ -15,6 +15,7 @@ namespace PlantCare.Application.Services
             _context = context;
         }
 
+        
         public async Task<List<UserPlantDTO>> GetUserPlantsAsync(int userId)
         {
             return await _context.UserPlants
@@ -330,5 +331,7 @@ namespace PlantCare.Application.Services
                 _ => 7
             };
         }
+
+       
     }
 }

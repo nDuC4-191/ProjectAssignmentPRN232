@@ -1,5 +1,6 @@
 ﻿// Path: PlantCare.Application/Interfaces/IUserPlantService.cs
 using PlantCare.Application.DTOs.UserPlant;
+using PlantCare.Infrastructure.Models;
 
 namespace PlantCare.Application.Interfaces
 {
@@ -23,5 +24,8 @@ namespace PlantCare.Application.Interfaces
 
         // Thống kê
         Task<UserPlantStatisticsDTO> GetUserPlantStatisticsAsync(int userId);
+
+       
+
     }
 }
