@@ -1,12 +1,13 @@
 ﻿// Path: PlantCare.API/Program.cs
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using PlantCare.Application.Interfaces;
+using PlantCare.Application.Interfaces.Repository;
 using PlantCare.Application.Services;
 using PlantCare.Infrastructure.Models;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -54,6 +55,15 @@ builder.Services.AddSwaggerGen(options =>
 // Database Context
 builder.Services.AddDbContext<PlantCareContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+// --- Đức Anh ---
+
+// 1. Đăng ký Repositories (Data Access Logic)
+builder.Services.AddScoped<ICategoryRepository, CategoryDARepository>();
+// 2. Đăng ký Services (Business Logic)
+builder.Services.AddScoped<ICategoryDAService, CategoryDAService>();
+
+builder.Services.AddScoped<IUserDAService, UserDAService>();
+builder.Services.AddScoped<IProductDAService, ProductDAService>();
 
 // Register Services - Phần của Vinh
 builder.Services.AddScoped<IUserPlantService, UserPlantService>();
@@ -109,6 +119,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
