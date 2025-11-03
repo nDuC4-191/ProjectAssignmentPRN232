@@ -50,6 +50,7 @@ namespace PlantCare.API.Controllers
                 return BadRequest("Update failed");
 
             return Ok("Profile updated successfully");
+
         }
     }
 }
