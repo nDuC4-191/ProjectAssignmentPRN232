@@ -24,6 +24,17 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API quản lý cây trồng cá nhân và gợi ý chăm sóc"
     });
 
+
+    //options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    //{
+    //    Name = "Authorization",
+    //    Type = SecuritySchemeType.Http,
+    //    Scheme = "Bearer",
+    //    BearerFormat = "JWT",
+    //    In = ParameterLocation.Header,
+    //    Description = "Nhập JWT token: Bearer {your token}"
+    //});
+
     // JWT Bearer trong Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -32,8 +43,9 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Nhập JWT token: Bearer {your token}"
+        Description = "Nhập token vào đây (chỉ cần paste, KHÔNG gõ chữ Bearer)"
     });
+
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -59,6 +71,16 @@ builder.Services.AddDbContext<PlantCareContext>(options =>
 builder.Services.AddScoped<IUserPlantService, UserPlantService>();
 builder.Services.AddScoped<ICareSuggestionService, CareSuggestionService>();
 
+// // Register Authentication Service -  Phần của Vũ
+builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+builder.Services.AddScoped<IUserOrderService, UserOrderService>();
+builder.Services.AddScoped<IShippingAddressService, ShippingAddressService>();
+
+
+
+
+
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
@@ -79,7 +101,8 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
     };
 });
 
@@ -106,6 +129,7 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty; // Swagger tại root
     });
 }
+
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
