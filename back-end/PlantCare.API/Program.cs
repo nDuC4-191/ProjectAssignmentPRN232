@@ -19,7 +19,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "PlantCare API - Vinh",
+        Title = "PlantCare API",
         Version = "v1",
         Description = "API quản lý cây trồng cá nhân và gợi ý chăm sóc"
     });
@@ -55,9 +55,12 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddDbContext<PlantCareContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Register Services - Phần của Vinh
+// ============================================
+// ✅ Register Services - Phần của Vinh
+// ============================================
 builder.Services.AddScoped<IUserPlantService, UserPlantService>();
 builder.Services.AddScoped<ICareSuggestionService, CareSuggestionService>();
+builder.Services.AddScoped<IPlantCareTipService, PlantCareTipService>();  // ⭐ THÊM DÒNG NÀY
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");

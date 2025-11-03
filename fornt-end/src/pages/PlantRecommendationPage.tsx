@@ -182,8 +182,9 @@ const PlantRecommendationPage: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {recommendations.map((plant) => (
-                <div key={plant.productID} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition">
+             {recommendations.map((plant) => (
+                 <div key={plant.productId} className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition">
+
                   <img
                     src={plant.imageUrl || '/placeholder-plant.jpg'}
                     alt={plant.productName}

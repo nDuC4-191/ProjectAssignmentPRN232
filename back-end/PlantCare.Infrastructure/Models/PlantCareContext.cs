@@ -31,6 +31,8 @@ public partial class PlantCareContext : DbContext
 
     public virtual DbSet<OrderDetail> OrderDetails { get; set; }
 
+    public virtual DbSet<PlantCareTip> PlantCareTips { get; set; }
+
     public virtual DbSet<Product> Products { get; set; }
 
     public virtual DbSet<Reminder> Reminders { get; set; }
@@ -41,7 +43,7 @@ public partial class PlantCareContext : DbContext
 
     public virtual DbSet<UserPlant> UserPlants { get; set; }
 
-    
+   
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ActivityLog>(entity =>
@@ -206,6 +208,23 @@ public partial class PlantCareContext : DbContext
                 .HasForeignKey(d => d.ProductId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK__OrderDeta__Produ__75A278F5");
+        });
+
+        modelBuilder.Entity<PlantCareTip>(entity =>
+        {
+            entity.HasKey(e => e.TipId).HasName("PK__PlantCar__2DB1A1A8BB418B15");
+
+            entity.Property(e => e.TipId).HasColumnName("TipID");
+            entity.Property(e => e.Category).HasMaxLength(50);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(sysutcdatetime())");
+            entity.Property(e => e.ProductId).HasColumnName("ProductID");
+            entity.Property(e => e.SortOrder).HasDefaultValue(0);
+            entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(sysutcdatetime())");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.PlantCareTips)
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("FK__PlantCare__Produ__2BFE89A6");
         });
 
         modelBuilder.Entity<Product>(entity =>

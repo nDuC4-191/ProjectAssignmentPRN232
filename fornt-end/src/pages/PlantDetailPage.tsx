@@ -1,8 +1,7 @@
-// src/pages/PlantDetailPage.tsx
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { userPlantApi } from '../services/api.service';
-import type { UserPlantDetailDTO } from '../types/userPlant.types';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { userPlantApi } from "../services/api.service";
+import type { UserPlantDetailDTO } from "../types/userPlant.types";
 
 const PlantDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -10,60 +9,73 @@ const PlantDetailPage: React.FC = () => {
   const [plant, setPlant] = useState<UserPlantDetailDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUpdateStatus, setShowUpdateStatus] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
+  const [newStatus, setNewStatus] = useState("");
 
   useEffect(() => {
-    loadPlantDetail();
+    // ✅ Kiểm tra id hợp lệ trước khi gọi API
+    if (!id || isNaN(Number(id))) {
+      console.error("❌ Invalid plant ID:", id);
+      alert("ID cây không hợp lệ hoặc thiếu trong URL!");
+      navigate("/my-plants");
+      return;
+    }
+
+    loadPlantDetail(Number(id));
   }, [id]);
 
-  const loadPlantDetail = async () => {
+  const loadPlantDetail = async (plantId: number) => {
     try {
       setLoading(true);
-      const data = await userPlantApi.getDetail(Number(id));
+      const data = await userPlantApi.getDetail(plantId);
       setPlant(data);
-      setNewStatus(data.status || 'Đang sống');
+      setNewStatus(data.status || "Đang sống");
     } catch (error) {
-      console.error('Error loading plant detail:', error);
-      alert('Không thể tải thông tin cây');
+      console.error("Error loading plant detail:", error);
+      alert("Không thể tải thông tin cây 🌱");
     } finally {
       setLoading(false);
     }
   };
 
+  // ================== HANDLERS ==================
   const handleWatering = async () => {
+    if (!id) return;
     try {
       await userPlantApi.updateWatering(Number(id), new Date());
-      alert('Đã cập nhật lịch tưới nước ✅');
-      loadPlantDetail();
+      alert("✅ Đã cập nhật lịch tưới nước");
+      loadPlantDetail(Number(id));
     } catch (error) {
-      console.error('Error updating watering:', error);
-      alert('Không thể cập nhật');
+      console.error("Error updating watering:", error);
+      alert("Không thể cập nhật tưới nước ❌");
     }
   };
 
   const handleFertilizing = async () => {
+    if (!id) return;
     try {
       await userPlantApi.updateFertilizing(Number(id), new Date());
-      alert('Đã cập nhật lịch bón phân ✅');
-      loadPlantDetail();
+      alert("✅ Đã cập nhật lịch bón phân");
+      loadPlantDetail(Number(id));
     } catch (error) {
-      console.error('Error updating fertilizing:', error);
-      alert('Không thể cập nhật');
+      console.error("Error updating fertilizing:", error);
+      alert("Không thể cập nhật bón phân ❌");
     }
   };
 
   const handleUpdateStatus = async () => {
+    if (!id) return;
     try {
       await userPlantApi.updateStatus(Number(id), newStatus);
-      alert('Đã cập nhật trạng thái ✅');
+      alert("✅ Đã cập nhật trạng thái");
       setShowUpdateStatus(false);
-      loadPlantDetail();
+      loadPlantDetail(Number(id));
     } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Không thể cập nhật');
+      console.error("Error updating status:", error);
+      alert("Không thể cập nhật trạng thái ❌");
     }
   };
 
+  // ================== UI ==================
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -75,7 +87,7 @@ const PlantDetailPage: React.FC = () => {
   if (!plant) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <p className="text-center text-gray-500">Không tìm thấy cây</p>
+        <p className="text-center text-gray-500">Không tìm thấy cây 🌿</p>
       </div>
     );
   }
@@ -83,7 +95,7 @@ const PlantDetailPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <button
-        onClick={() => navigate('/my-plants')}
+        onClick={() => navigate("/my-plants")}
         className="mb-6 flex items-center text-gray-600 hover:text-gray-800"
       >
         ← Quay lại danh sách
@@ -93,7 +105,7 @@ const PlantDetailPage: React.FC = () => {
         {/* Header */}
         <div className="relative">
           <img
-            src={plant.product.imageUrl || '/placeholder-plant.jpg'}
+            src={plant.product.imageUrl || "/placeholder-plant.jpg"}
             alt={plant.product.productName}
             className="w-full h-64 object-cover"
           />
@@ -116,18 +128,27 @@ const PlantDetailPage: React.FC = () => {
             <p className="text-gray-600">{plant.product.productName}</p>
           </div>
 
-          {/* Care Status */}
+          {/* Care Info */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Đã trồng */}
             <div className="bg-blue-50 rounded-lg p-4">
               <p className="text-gray-600 text-sm">Đã trồng</p>
-              <p className="text-2xl font-bold text-blue-600">{plant.daysSincePlanted} ngày</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {plant.daysSincePlanted} ngày
+              </p>
               <p className="text-xs text-gray-500 mt-1">
-                {plant.plantedDate ? new Date(plant.plantedDate).toLocaleDateString('vi-VN') : 'Chưa rõ'}
+                {plant.plantedDate
+                  ? new Date(plant.plantedDate).toLocaleDateString("vi-VN")
+                  : "Chưa rõ"}
               </p>
             </div>
+
+            {/* Tưới nước */}
             <div className="bg-green-50 rounded-lg p-4">
               <p className="text-gray-600 text-sm">Tưới lần cuối</p>
-              <p className="text-2xl font-bold text-green-600">{plant.daysSinceWatered} ngày trước</p>
+              <p className="text-2xl font-bold text-green-600">
+                {plant.daysSinceWatered} ngày trước
+              </p>
               <button
                 onClick={handleWatering}
                 className="mt-2 w-full px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
@@ -135,9 +156,13 @@ const PlantDetailPage: React.FC = () => {
                 💧 Đã tưới hôm nay
               </button>
             </div>
+
+            {/* Bón phân */}
             <div className="bg-purple-50 rounded-lg p-4">
               <p className="text-gray-600 text-sm">Bón phân lần cuối</p>
-              <p className="text-2xl font-bold text-purple-600">{plant.daysSinceFertilized} ngày trước</p>
+              <p className="text-2xl font-bold text-purple-600">
+                {plant.daysSinceFertilized} ngày trước
+              </p>
               <button
                 onClick={handleFertilizing}
                 className="mt-2 w-full px-3 py-1 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm"
@@ -147,67 +172,55 @@ const PlantDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Product Details */}
+          {/* Product Info */}
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Thông tin cây</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-600 text-sm">Độ khó</p>
-                <p className="font-semibold">{plant.product.difficulty}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-600 text-sm">Ánh sáng</p>
-                <p className="font-semibold">{plant.product.lightRequirement}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-600 text-sm">Nước</p>
-                <p className="font-semibold">{plant.product.waterRequirement}</p>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-gray-600 text-sm">Loại đất</p>
-                <p className="font-semibold text-xs">{plant.product.soilType || 'N/A'}</p>
-              </div>
-            </div>
+              <InfoBox label="Độ khó" value={plant.product?.difficulty || "N/A"} />
+                  <InfoBox label="Ánh sáng" value={plant.product?.lightRequirement || "N/A"} />
+                  <InfoBox label="Nước" value={plant.product?.waterRequirement || "N/A"} />
+                  <InfoBox label="Loại đất" value={plant.product?.soilType || "N/A"} />
+
+</div>
+
           </div>
 
           {/* Description */}
           {plant.product.description && (
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">Mô tả</h2>
-              <p className="text-gray-700 leading-relaxed">{plant.product.description}</p>
-            </div>
+            <Section title="Mô tả">{plant.product.description}</Section>
           )}
 
           {/* Notes */}
           {plant.notes && (
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">Ghi chú</h2>
+            <Section title="Ghi chú">
               <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                <p className="text-gray-700">{plant.notes}</p>
+                {plant.notes}
               </div>
-            </div>
+            </Section>
           )}
 
-          {/* Upcoming Reminders */}
+          {/* Reminders */}
           {plant.upcomingReminders.length > 0 && (
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-3">Lịch nhắc sắp tới</h2>
-              <div className="space-y-2">
-                {plant.upcomingReminders.map((reminder) => (
-                  <div key={reminder.reminderID} className="bg-orange-50 border-l-4 border-orange-400 p-3">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-semibold text-gray-800">{reminder.reminderType}</p>
-                        <p className="text-sm text-gray-600">{reminder.message}</p>
-                      </div>
-                      <p className="text-sm text-orange-600 font-semibold">
-                        {new Date(reminder.reminderDate).toLocaleDateString('vi-VN')}
+            <Section title="Lịch nhắc sắp tới">
+              {plant.upcomingReminders.map((reminder) => (
+                <div
+                  key={reminder.reminderID}
+                  className="bg-orange-50 border-l-4 border-orange-400 p-3 mb-2"
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {reminder.reminderType}
                       </p>
+                      <p className="text-sm text-gray-600">{reminder.message}</p>
                     </div>
+                    <p className="text-sm text-orange-600 font-semibold">
+                      {new Date(reminder.reminderDate).toLocaleDateString("vi-VN")}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
+              ))}
+            </Section>
           )}
         </div>
       </div>
@@ -246,5 +259,26 @@ const PlantDetailPage: React.FC = () => {
     </div>
   );
 };
+
+// ==== Small UI helpers ====
+const InfoBox = ({ label, value }: { label: string; value: string }) => (
+  <div className="bg-gray-50 rounded-lg p-3">
+    <p className="text-gray-600 text-sm">{label}</p>
+    <p className="font-semibold">{value}</p>
+  </div>
+);
+
+const Section = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="mb-6">
+    <h2 className="text-xl font-bold text-gray-800 mb-3">{title}</h2>
+    {children}
+  </div>
+);
 
 export default PlantDetailPage;

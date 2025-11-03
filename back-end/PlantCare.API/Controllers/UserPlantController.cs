@@ -9,7 +9,7 @@ namespace PlantCare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    //[Authorize] // 👉 Nên bật lại khi có middleware authorization
     public class UserPlantController : ControllerBase
     {
         private readonly IUserPlantService _userPlantService;
@@ -19,10 +19,20 @@ namespace PlantCare.API.Controllers
             _userPlantService = userPlantService;
         }
 
+        /// <summary>
+        /// Lấy UserId từ Claims (token)
+        /// </summary>
+        //private int GetUserId()
+        //{
+        //    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        //    if (string.IsNullOrEmpty(userIdClaim))
+        //        throw new UnauthorizedAccessException("Người dùng chưa đăng nhập hoặc token không hợp lệ.");
+
+        //    return int.Parse(userIdClaim);
+        //}
         private int GetUserId()
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            return int.Parse(userIdClaim ?? "0");
+            return 1; // gán tạm userId=1 để test
         }
 
         /// <summary>
@@ -36,6 +46,10 @@ namespace PlantCare.API.Controllers
                 var userId = GetUserId();
                 var plants = await _userPlantService.GetUserPlantsAsync(userId);
                 return Ok(new { success = true, data = plants });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -55,9 +69,13 @@ namespace PlantCare.API.Controllers
                 var plant = await _userPlantService.GetUserPlantDetailAsync(id, userId);
 
                 if (plant == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy cây" });
+                    return NotFound(new { success = false, message = "Không tìm thấy cây." });
 
                 return Ok(new { success = true, data = plant });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -73,10 +91,19 @@ namespace PlantCare.API.Controllers
         {
             try
             {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ." });
+
                 var userId = GetUserId();
                 var plant = await _userPlantService.AddUserPlantAsync(userId, dto);
-                return CreatedAtAction(nameof(GetUserPlantDetail), new { id = plant.UserPlantID },
-                    new { success = true, data = plant, message = "Thêm cây thành công" });
+
+                return CreatedAtAction(nameof(GetUserPlantDetail),
+                    new { id = plant.UserPlantID },
+                    new { success = true, data = plant, message = "Thêm cây thành công." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -96,9 +123,13 @@ namespace PlantCare.API.Controllers
                 var result = await _userPlantService.UpdateUserPlantAsync(userId, dto);
 
                 if (!result)
-                    return NotFound(new { success = false, message = "Không tìm thấy cây hoặc không có quyền cập nhật" });
+                    return NotFound(new { success = false, message = "Không tìm thấy cây hoặc không có quyền cập nhật." });
 
-                return Ok(new { success = true, message = "Cập nhật thành công" });
+                return Ok(new { success = true, message = "Cập nhật thành công." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -118,9 +149,13 @@ namespace PlantCare.API.Controllers
                 var result = await _userPlantService.DeleteUserPlantAsync(id, userId);
 
                 if (!result)
-                    return NotFound(new { success = false, message = "Không tìm thấy cây hoặc không có quyền xóa" });
+                    return NotFound(new { success = false, message = "Không tìm thấy cây hoặc không có quyền xóa." });
 
-                return Ok(new { success = true, message = "Xóa cây thành công" });
+                return Ok(new { success = true, message = "Xóa cây thành công." });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { success = false, message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -140,9 +175,9 @@ namespace PlantCare.API.Controllers
                 var result = await _userPlantService.UpdateWateringAsync(id, userId, dto.Date);
 
                 if (!result)
-                    return NotFound(new { success = false, message = "Không tìm thấy cây" });
+                    return NotFound(new { success = false, message = "Không tìm thấy cây." });
 
-                return Ok(new { success = true, message = "Đã cập nhật lịch tưới nước" });
+                return Ok(new { success = true, message = "Đã cập nhật lịch tưới nước." });
             }
             catch (Exception ex)
             {
@@ -162,9 +197,9 @@ namespace PlantCare.API.Controllers
                 var result = await _userPlantService.UpdateFertilizingAsync(id, userId, dto.Date);
 
                 if (!result)
-                    return NotFound(new { success = false, message = "Không tìm thấy cây" });
+                    return NotFound(new { success = false, message = "Không tìm thấy cây." });
 
-                return Ok(new { success = true, message = "Đã cập nhật lịch bón phân" });
+                return Ok(new { success = true, message = "Đã cập nhật lịch bón phân." });
             }
             catch (Exception ex)
             {
@@ -184,9 +219,9 @@ namespace PlantCare.API.Controllers
                 var result = await _userPlantService.UpdatePlantStatusAsync(id, userId, dto.Status);
 
                 if (!result)
-                    return NotFound(new { success = false, message = "Không tìm thấy cây" });
+                    return NotFound(new { success = false, message = "Không tìm thấy cây." });
 
-                return Ok(new { success = true, message = "Đã cập nhật trạng thái" });
+                return Ok(new { success = true, message = "Đã cập nhật trạng thái." });
             }
             catch (Exception ex)
             {
