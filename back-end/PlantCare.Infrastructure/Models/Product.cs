@@ -41,5 +41,7 @@ public partial class Product
 
     public virtual ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
 
+    public virtual ICollection<PlantCareTip> PlantCareTips { get; set; } = new List<PlantCareTip>();
+
     public virtual ICollection<UserPlant> UserPlants { get; set; } = new List<UserPlant>();
 }

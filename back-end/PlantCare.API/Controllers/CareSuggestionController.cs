@@ -1,5 +1,4 @@
-﻿// Path: PlantCare.API/Controllers/CareSuggestionController.cs
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PlantCare.Application.DTOs.CareSuggestion;
 using PlantCare.Application.Interfaces;
@@ -63,7 +62,7 @@ namespace PlantCare.API.Controllers
         }
 
         /// <summary>
-        /// Tìm kiếm hướng dẫn chăm sóc
+        /// Tìm kiếm hướng dẫn chăm sóc bằng từ khóa
         /// </summary>
         [HttpGet("guides/search")]
         public async Task<IActionResult> SearchCareGuides([FromQuery] string term)
@@ -74,6 +73,26 @@ namespace PlantCare.API.Controllers
                     return BadRequest(new { success = false, message = "Vui lòng nhập từ khóa tìm kiếm" });
 
                 var guides = await _careSuggestionService.SearchCareGuidesAsync(term);
+                return Ok(new { success = true, data = guides, total = guides.Count });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Lọc hướng dẫn chăm sóc theo tên cây
+        /// </summary>
+        [HttpGet("guides/filter")]
+        public async Task<IActionResult> FilterCareGuides([FromQuery] string plantName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(plantName))
+                    return BadRequest(new { success = false, message = "Vui lòng nhập tên cây để lọc." });
+
+                var guides = await _careSuggestionService.SearchCareGuidesAsync(plantName);
                 return Ok(new { success = true, data = guides, total = guides.Count });
             }
             catch (Exception ex)

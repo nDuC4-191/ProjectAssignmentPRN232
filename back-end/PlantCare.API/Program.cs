@@ -20,10 +20,21 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "PlantCare API - Vinh",
+        Title = "PlantCare API",
         Version = "v1",
         Description = "API quản lý cây trồng cá nhân và gợi ý chăm sóc"
     });
+
+
+    //options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    //{
+    //    Name = "Authorization",
+    //    Type = SecuritySchemeType.Http,
+    //    Scheme = "Bearer",
+    //    BearerFormat = "JWT",
+    //    In = ParameterLocation.Header,
+    //    Description = "Nhập JWT token: Bearer {your token}"
+    //});
 
     // JWT Bearer trong Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -33,8 +44,9 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Nhập JWT token: Bearer {your token}"
+        Description = "Nhập token vào đây (chỉ cần paste, KHÔNG gõ chữ Bearer)"
     });
+
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -65,9 +77,19 @@ builder.Services.AddScoped<ICategoryDAService, CategoryDAService>();
 builder.Services.AddScoped<IUserDAService, UserDAService>();
 builder.Services.AddScoped<IProductDAService, ProductDAService>();
 
-// Register Services - Phần của Vinh
+// ============================================
+// ✅ Register Services - Phần của Vinh
+// ============================================
 builder.Services.AddScoped<IUserPlantService, UserPlantService>();
 builder.Services.AddScoped<ICareSuggestionService, CareSuggestionService>();
+builder.Services.AddScoped<IPlantCareTipService, PlantCareTipService>();  // ⭐ THÊM DÒNG NÀY
+
+// // Register Authentication Service -  Phần của Vũ
+builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
+builder.Services.AddScoped<IUserProfileService, UserProfileService>();
+builder.Services.AddScoped<IUserOrderService, UserOrderService>();
+builder.Services.AddScoped<IShippingAddressService, ShippingAddressService>();
+
 
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
@@ -89,7 +111,8 @@ builder.Services.AddAuthentication(options =>
         ValidIssuer = jwtSettings["Issuer"],
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-        ClockSkew = TimeSpan.Zero
+        ClockSkew = TimeSpan.Zero,
+        NameClaimType = System.Security.Claims.ClaimTypes.NameIdentifier
     };
 });
 
@@ -106,6 +129,33 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Seed Admin User
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<PlantCareContext>();
+    var adminConfig = builder.Configuration.GetSection("AdminAccount");
+
+    string adminEmail = adminConfig["Email"];
+    if (!context.Users.Any(u => u.Email == adminEmail))
+    {
+        var admin = new User
+        {
+            FullName = adminConfig["FullName"],
+            Email = adminEmail,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminConfig["Password"]),
+            Phone = adminConfig["Phone"],
+            Address = adminConfig["Address"],
+            Role = "Admin",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        context.Users.Add(admin);
+        context.SaveChanges();
+    }
+}
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -116,6 +166,7 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty; // Swagger tại root
     });
 }
+
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");
