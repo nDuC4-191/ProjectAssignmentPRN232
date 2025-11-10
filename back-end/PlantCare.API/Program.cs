@@ -78,9 +78,6 @@ builder.Services.AddScoped<IUserOrderService, UserOrderService>();
 builder.Services.AddScoped<IShippingAddressService, ShippingAddressService>();
 
 
-
-
-
 // JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
@@ -118,6 +115,33 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Seed Admin User
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<PlantCareContext>();
+    var adminConfig = builder.Configuration.GetSection("AdminAccount");
+
+    string adminEmail = adminConfig["Email"];
+    if (!context.Users.Any(u => u.Email == adminEmail))
+    {
+        var admin = new User
+        {
+            FullName = adminConfig["FullName"],
+            Email = adminEmail,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminConfig["Password"]),
+            Phone = adminConfig["Phone"],
+            Address = adminConfig["Address"],
+            Role = "Admin",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        context.Users.Add(admin);
+        context.SaveChanges();
+    }
+}
 
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
