@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import MyPlantsPage from './pages/MyPlantsPage';
 import PlantDetailPage from './pages/PlantDetailPage';
+import AddPlantPage from './pages/AddPlantPage'; // ✅ import thêm
 import CareWikiPage from './pages/CareWikiPage';
 import PlantRecommendationPage from './pages/PlantRecommendationPage';
 import AdminProductsPage from "./pages/Admin/AdminProductsPage";
@@ -21,7 +22,7 @@ function App() {
               <Link to="/" className="text-2xl font-bold text-green-600 flex items-center">
                 🌱 PlantCare
               </Link>
-              
+
               <div className="flex gap-6">
                 <Link 
   to="/admin/products"
@@ -57,7 +58,8 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/my-plants" element={<MyPlantsPage />} />
-          <Route path="/my-plants/:id" element={<PlantDetailPage />} />
+          <Route path="/my-plants/add" element={<AddPlantPage />} />  {/* ✅ THÊM DÒNG NÀY TRƯỚC */}
+          <Route path="/my-plants/:id" element={<PlantDetailPage />} /> {/* 🟢 Sau "add" */}
           <Route path="/wiki" element={<CareWikiPage />} />
           <Route path="/recommendations" element={<PlantRecommendationPage />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
@@ -83,7 +85,6 @@ const HomePage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        {/* Feature 1 */}
         <Link 
           to="/my-plants"
           className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition text-center group"
@@ -95,7 +96,6 @@ const HomePage: React.FC = () => {
           </p>
         </Link>
 
-        {/* Feature 2 */}
         <Link 
           to="/wiki"
           className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition text-center group"
@@ -107,7 +107,6 @@ const HomePage: React.FC = () => {
           </p>
         </Link>
 
-        {/* Feature 3 */}
         <Link 
           to="/recommendations"
           className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition text-center group"

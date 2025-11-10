@@ -3,7 +3,7 @@
 export interface UserPlantDTO {
   userPlantID: number;
   userID: number;
-  productID: number;
+  productId: number;        // ✅ đổi từ productID → productId
   productName: string;
   nickname?: string;
   plantedDate?: string;
@@ -34,7 +34,7 @@ export interface UserPlantDetailDTO {
 }
 
 export interface ProductInfoDTO {
-  productID: number;
+  productId: number;       // ✅ đổi
   productName: string;
   description?: string;
   imageUrl?: string;
@@ -53,7 +53,7 @@ export interface ReminderDTO {
 }
 
 export interface CreateUserPlantDTO {
-  productID: number;
+  productId: number;       // ✅ đổi
   nickname?: string;
   plantedDate?: string;
   notes?: string;
@@ -77,7 +77,7 @@ export interface UserPlantStatisticsDTO {
 }
 
 export interface PlantCareGuideDTO {
-  productID: number;
+  productId: number;       // ✅ đổi
   productName: string;
   generalCare?: string;
   wateringGuide: WateringGuideDTO;
@@ -128,7 +128,7 @@ export interface CareSuggestionDTO {
 }
 
 export interface ProductSuggestionDTO {
-  productID: number;
+  productId: number;       // ✅ đổi
   productName: string;
   description?: string;
   price: number;
