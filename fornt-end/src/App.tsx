@@ -6,6 +6,10 @@ import PlantDetailPage from './pages/PlantDetailPage';
 import AddPlantPage from './pages/AddPlantPage'; // ✅ import thêm
 import CareWikiPage from './pages/CareWikiPage';
 import PlantRecommendationPage from './pages/PlantRecommendationPage';
+import AdminProductsPage from "./pages/Admin/AdminProductsPage";
+import AdminCategoriesPage from "./pages/Admin/AdminCategoriesPage";
+import AdminUsersPage from "./pages/Admin/AdminUsersPage";
+
 
 function App() {
   return (
@@ -20,6 +24,13 @@ function App() {
               </Link>
 
               <div className="flex gap-6">
+                <Link 
+  to="/admin/products"
+  className="text-gray-700 hover:text-green-600 font-medium transition"
+>
+  Admin
+</Link>
+
                 <Link 
                   to="/my-plants" 
                   className="text-gray-700 hover:text-green-600 font-medium transition"
@@ -51,6 +62,9 @@ function App() {
           <Route path="/my-plants/:id" element={<PlantDetailPage />} /> {/* 🟢 Sau "add" */}
           <Route path="/wiki" element={<CareWikiPage />} />
           <Route path="/recommendations" element={<PlantRecommendationPage />} />
+          <Route path="/admin/products" element={<AdminProductsPage />} />
+          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+          <Route path="/admin/users" element={<AdminUsersPage />} />
         </Routes>
       </div>
     </BrowserRouter>
