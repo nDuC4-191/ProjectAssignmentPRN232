@@ -67,7 +67,8 @@ builder.Services.AddScoped<ICategoryDAService, CategoryDAService>();
 builder.Services.AddScoped<IUserDAService, UserDAService>();
 builder.Services.AddScoped<IProductDAService, ProductDAService>();
 
-
+// ✅ Phần của Nhật
+builder.Services.AddScoped<IOrderDAService, OrderDAService>();
 
 
 // Register Services - Phần của Vinh
