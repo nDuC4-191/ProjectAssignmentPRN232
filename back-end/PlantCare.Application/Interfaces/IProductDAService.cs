@@ -1,4 +1,5 @@
-﻿using PlantCare.Application.DTOs.ProductDADTO;
+﻿using PlantCare.Application.DTOs.Common;
+using PlantCare.Application.DTOs.ProductDADTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,5 +15,6 @@ namespace PlantCare.Application.Interfaces
         Task<int> CreateAsync(CreateUpdateProductDADto dto);
         Task<bool> UpdateAsync(int id, CreateUpdateProductDADto dto);
         Task<bool> DeleteAsync(int id);
+        Task<PagedResult<ProductDADto>> GetProductsAsync(ProductQueryParameters query);
     }
 }

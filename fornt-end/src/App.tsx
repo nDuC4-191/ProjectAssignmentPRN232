@@ -1,9 +1,15 @@
 // src/App.tsx
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
+
+// === Import Context ===
+import { useAuth } from './contexts/AuthContext';
+import { useCart } from './contexts/CartContext';
+
+// === Import Trang của Vinh/Đức Anh ===
 import MyPlantsPage from './pages/MyPlantsPage';
 import PlantDetailPage from './pages/PlantDetailPage';
-import AddPlantPage from './pages/AddPlantPage'; // ✅ import thêm
+import AddPlantPage from './pages/AddPlantPage';
 import CareWikiPage from './pages/CareWikiPage';
 import PlantRecommendationPage from './pages/PlantRecommendationPage';
 import AdminProductsPage from "./pages/Admin/AdminProductsPage";
@@ -11,73 +17,172 @@ import AdminCategoriesPage from "./pages/Admin/AdminCategoriesPage";
 import AdminUsersPage from "./pages/Admin/AdminUsersPage";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 
+// === Import Trang của Cảnh ===
+import StoreHomePage from './pages/Store/StoreHomePage';
+import ProductDetailPageStore from './pages/Store/ProductDetailPage';
+import CartPage from './pages/Store/CartPage';
+import CheckoutPage from './pages/Store/CheckoutPage';
+import OrderSuccessPage from './pages/Store/OrderSuccessPage';
 
+// === (Tùy chọn) Trang của Vũ ===
+// import LoginPage from './pages/LoginPage';
+// import RegisterPage from './pages/RegisterPage';
+// import ProfilePage from './pages/ProfilePage';
 
 function App() {
+  const { cartItemCount } = useCart();
+  const { isAuthenticated, user, logout, isLoading } = useAuth();
+
   return (
-    <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        {/* Navigation */}
-        <nav className="bg-white shadow-lg sticky top-0 z-50">
-          <div className="container mx-auto px-4">
-            <div className="flex justify-between items-center h-16">
-              <Link to="/" className="text-2xl font-bold text-green-600 flex items-center">
-                🌱 PlantCare
+    <div className="min-h-screen bg-gray-50">
+      {/* === Navigation === */}
+      <nav className="bg-white shadow-lg sticky top-0 z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center h-16">
+            
+            {/* Logo */}
+            <Link to="/" className="text-2xl font-bold text-green-600 flex items-center">
+              🌱 PlantCare
+            </Link>
+
+            {/* Navigation Links */}
+            <div className="flex gap-6 items-center">
+              {/* Link cửa hàng (luôn hiển thị) */}
+              <Link
+                to="/"
+                className="text-gray-700 hover:text-green-600 font-medium transition"
+              >
+                Cửa hàng
               </Link>
 
-              
-              <div className="flex gap-6 items-center">
-        <Link 
-  to="/admin"
-  className="text-gray-700 hover:text-green-600 font-medium transition"
->
-  Admin
-</Link>
+              {/* Các link chỉ hiện khi đã đăng nhập */}
+              {isAuthenticated && (
+                <>
+                  <Link
+                    to="/admin"
+                    className="text-gray-700 hover:text-green-600 font-medium transition"
+                  >
+                    Admin
+                  </Link>
 
+                  <Link
+                    to="/my-plants"
+                    className="text-gray-700 hover:text-green-600 font-medium transition"
+                  >
+                    Cây của tôi
+                  </Link>
+                  <Link
+                    to="/wiki"
+                    className="text-gray-700 hover:text-green-600 font-medium transition"
+                  >
+                    Wiki chăm sóc
+                  </Link>
+                  <Link
+                    to="/recommendations"
+                    className="text-gray-700 hover:text-green-600 font-medium transition"
+                  >
+                    Gợi ý cây
+                  </Link>
+                </>
+              )}
 
+              {/* === Icon Giỏ hàng === */}
+              <Link to="/cart" className="relative text-gray-700 hover:text-green-600">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
+                  />
+                </svg>
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
 
-                <Link 
-                  to="/my-plants" 
-                  className="text-gray-700 hover:text-green-600 font-medium transition"
-                >
-                  Cây của tôi
-                </Link>
-                <Link 
-                  to="/wiki" 
-                  className="text-gray-700 hover:text-green-600 font-medium transition"
-                >
-                  Wiki chăm sóc
-                </Link>
-                <Link 
-                  to="/recommendations" 
-                  className="text-gray-700 hover:text-green-600 font-medium transition"
-                >
-                  Gợi ý cây
-                </Link>
-              </div>
+              {/* Auth section */}
+              {isLoading && <span className="text-gray-500 text-sm">...</span>}
+              {!isLoading && (
+                isAuthenticated ? (
+                  <div className="flex items-center space-x-2">
+                    <Link to="/profile" className="text-gray-700">
+                      {user?.fullName}
+                    </Link>
+                    <button
+                      onClick={logout}
+                      className="text-sm text-gray-500 hover:text-red-500"
+                    >
+                      (Đăng xuất)
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700"
+                  >
+                    Đăng nhập
+                  </Link>
+                )
+              )}
             </div>
           </div>
-        </nav>
+        </div>
+      </nav>
 
-        {/* Routes */}
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/my-plants" element={<MyPlantsPage />} />
-          <Route path="/my-plants/add" element={<AddPlantPage />} />  {/* ✅ THÊM DÒNG NÀY TRƯỚC */}
-          <Route path="/my-plants/:id" element={<PlantDetailPage />} /> {/* 🟢 Sau "add" */}
-          <Route path="/wiki" element={<CareWikiPage />} />
-          <Route path="/recommendations" element={<PlantRecommendationPage />} />
-          <Route path="/admin/products" element={<AdminProductsPage />} />
-          <Route path="/admin/categories" element={<AdminCategoriesPage />} />
-          <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-        </Routes>
-      </div>
-    </BrowserRouter>
+      {/* === Routes === */}
+      <Routes>
+        {/* Trang chủ (Cửa hàng của Cảnh) */}
+        <Route path="/" element={<StoreHomePage />} />
+
+        {/* Dashboard (trang home cũ của Vinh) */}
+        <Route path="/dashboard" element={<HomePage />} />
+
+        {/* Cửa hàng */}
+        <Route path="/products/:id" element={<ProductDetailPageStore />} />
+        <Route path="/cart" element={<CartPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
+
+        {/* Vinh / Đức Anh */}
+        <Route path="/my-plants" element={<MyPlantsPage />} />
+        <Route path="/my-plants/add" element={<AddPlantPage />} />
+        <Route path="/my-plants/:id" element={<PlantDetailPage />} />
+        <Route path="/wiki" element={<CareWikiPage />} />
+        <Route path="/recommendations" element={<PlantRecommendationPage />} />
+
+        {/* Admin */}
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/products" element={<AdminProductsPage />} />
+        <Route path="/admin/categories" element={<AdminCategoriesPage />} />
+        <Route path="/admin/users" element={<AdminUsersPage />} />
+
+        {/* Auth pages (nếu có) */}
+        {/* 
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/profile" element={<ProfilePage />} /> 
+        */}
+
+        {/* 404 Page */}
+        <Route
+          path="*"
+          element={<div className="text-center p-10">404 - Trang không tồn tại</div>}
+        />
+      </Routes>
+    </div>
   );
 }
 
-// HomePage Component
+// === Trang Home cũ ===
 const HomePage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-16">
@@ -91,7 +196,7 @@ const HomePage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        <Link 
+        <Link
           to="/my-plants"
           className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition text-center group"
         >
@@ -102,7 +207,7 @@ const HomePage: React.FC = () => {
           </p>
         </Link>
 
-        <Link 
+        <Link
           to="/wiki"
           className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition text-center group"
         >
@@ -113,7 +218,7 @@ const HomePage: React.FC = () => {
           </p>
         </Link>
 
-        <Link 
+        <Link
           to="/recommendations"
           className="bg-white rounded-lg shadow-lg p-8 hover:shadow-xl transition text-center group"
         >
