@@ -3,12 +3,15 @@ import api from "../../services/api.service";
 
 interface Product {
   productId: number;
+  categoryID: number;
   productName: string;
   description: string;
   price: number;
   stock: number;
-  categoryName?: string;
-  imageUrl?: string;
+  difficulty: string;
+  lightRequirement: string;
+  waterRequirement: string;
+  soilType: string;
 }
 
 const AdminProductsPage: React.FC = () => {
@@ -16,6 +19,7 @@ const AdminProductsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     productName: "",
@@ -23,10 +27,11 @@ const AdminProductsPage: React.FC = () => {
     price: "",
     stock: "",
     categoryId: "",
-    imageUrl: "",
+    difficulty: "",
+    lightRequirement: "",
+    waterRequirement: "",
+    soilType: "",
   });
-
-  const [editingId, setEditingId] = useState<number | null>(null);
 
   // 🔹 Lấy danh sách sản phẩm
   const fetchProducts = async () => {
@@ -45,75 +50,100 @@ const AdminProductsPage: React.FC = () => {
     fetchProducts();
   }, []);
 
-  // 🔹 Xử lý thay đổi form
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // 🔹 Xử lý thay đổi input
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
 
-  // 🔹 Gửi form (thêm / sửa)
+  // 🔹 Gửi form (thêm hoặc sửa)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      if (editingId) {
-        await api.put(`/admin/products/${editingId}`, {
-          ...formData,
-          price: parseFloat(formData.price),
-          stock: parseInt(formData.stock),
-          categoryId: parseInt(formData.categoryId),
-        });
-        alert("Cập nhật sản phẩm thành công!");
+      const dataToSend = {
+        categoryID: parseInt(formData.categoryId),
+        productName: formData.productName,
+        description: formData.description,
+        price: parseFloat(formData.price),
+        stock: parseInt(formData.stock),
+        difficulty: formData.difficulty || "Trung bình",
+        lightRequirement: formData.lightRequirement || "Vừa",
+        waterRequirement: formData.waterRequirement || "Vừa",
+        soilType: formData.soilType || "Tơi xốp",
+      };
+
+      if (editingId !== null) {
+        // 🔹 Cập nhật
+        await api.put(`/admin/products/${editingId}`, dataToSend);
+        alert("✅ Cập nhật sản phẩm thành công!");
       } else {
-        await api.post("/admin/products", {
-          ...formData,
-          price: parseFloat(formData.price),
-          stock: parseInt(formData.stock),
-          categoryId: parseInt(formData.categoryId),
-        });
-        alert("Thêm sản phẩm thành công!");
+        // 🔹 Thêm mới
+        await api.post("/admin/products", dataToSend);
+        alert("✅ Thêm sản phẩm thành công!");
       }
-      setFormData({
-        productName: "",
-        description: "",
-        price: "",
-        stock: "",
-        categoryId: "",
-        imageUrl: "",
-      });
-      setEditingId(null);
-      setShowForm(false);
+
+      resetForm();
       fetchProducts();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Có lỗi xảy ra khi lưu sản phẩm!");
+      alert("❌ Có lỗi xảy ra khi lưu sản phẩm!");
     }
+  };
+
+  // 🔹 Reset form về mặc định
+  const resetForm = () => {
+    setFormData({
+      productName: "",
+      description: "",
+      price: "",
+      stock: "",
+      categoryId: "",
+      difficulty: "",
+      lightRequirement: "",
+      waterRequirement: "",
+      soilType: "",
+    });
+    setEditingId(null);
+    setShowForm(false);
   };
 
   // 🔹 Xóa sản phẩm
   const handleDelete = async (id: number) => {
     if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
     try {
-      await api.delete(`/admin/products/${id}`);
+      await api.delete(`/admin/products/${id}`); // ✅ đảm bảo đúng URL
+      alert("🗑️ Xóa thành công!");
       setProducts(products.filter((p) => p.productId !== id));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Không thể xóa sản phẩm!");
+      alert("❌ Không thể xóa sản phẩm (kiểm tra log backend).");
     }
   };
 
-  // 🔹 Chỉnh sửa sản phẩm
+  // 🔹 Sửa sản phẩm
   const handleEdit = (product: Product) => {
     setEditingId(product.productId);
     setFormData({
-      productName: product.productName,
-      description: product.description,
-      price: product.price.toString(),
-      stock: product.stock.toString(),
-      categoryId: "",
-      imageUrl: product.imageUrl || "",
+      productName: product.productName || "",
+      description: product.description || "",
+      price: product.price?.toString() || "",
+      stock: product.stock?.toString() || "",
+      categoryId: product.categoryID?.toString() || "",
+      difficulty: product.difficulty || "",
+      lightRequirement: product.lightRequirement || "",
+      waterRequirement: product.waterRequirement || "",
+      soilType: product.soilType || "",
     });
+    setShowForm(true);
+  };
+
+  // 🔹 Mở form thêm mới
+  const handleAddNew = () => {
+    resetForm();
     setShowForm(true);
   };
 
@@ -124,35 +154,26 @@ const AdminProductsPage: React.FC = () => {
     <div className="p-8">
       <h1 className="text-3xl font-bold text-green-700 mb-6">Quản lý sản phẩm</h1>
 
-      {/* Nút thêm mới */}
+      {/* 🔹 Nút thêm mới */}
       <div className="mb-4">
-        <button
-          onClick={() => {
-            setShowForm(!showForm);
-            setEditingId(null);
-            setFormData({
-              productName: "",
-              description: "",
-              price: "",
-              stock: "",
-              categoryId: "",
-              imageUrl: "",
-            });
-          }}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-        >
-          {showForm ? "Đóng form" : "➕ Thêm sản phẩm"}
-        </button>
+        {!showForm && (
+          <button
+            onClick={handleAddNew}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+          >
+            ➕ Thêm sản phẩm
+          </button>
+        )}
       </div>
 
-      {/* Form thêm/sửa */}
+      {/* 🔹 Form thêm/sửa */}
       {showForm && (
         <form
           onSubmit={handleSubmit}
           className="bg-white shadow-lg rounded-lg p-6 mb-8 max-w-xl"
         >
           <h2 className="text-xl font-semibold mb-4">
-            {editingId ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
+            {editingId !== null ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
           </h2>
 
           <div className="grid gap-3">
@@ -191,27 +212,74 @@ const AdminProductsPage: React.FC = () => {
               className="border p-2 rounded"
             />
             <input
+              type="number"
+              name="categoryId"
+              placeholder="ID danh mục"
+              value={formData.categoryId}
+              onChange={handleChange}
+              required
+              className="border p-2 rounded"
+            />
+
+            <select
+              name="difficulty"
+              value={formData.difficulty}
+              onChange={handleChange}
+              className="border p-2 rounded"
+            >
+              <option value="">Độ khó</option>
+              <option value="Dễ">Dễ</option>
+              <option value="Trung bình">Trung bình</option>
+              <option value="Khó">Khó</option>
+            </select>
+
+            <input
               type="text"
-              name="imageUrl"
-              placeholder="Ảnh (URL)"
-              value={formData.imageUrl}
+              name="lightRequirement"
+              placeholder="Ánh sáng (Cao, Trung bình...)"
+              value={formData.lightRequirement}
+              onChange={handleChange}
+              className="border p-2 rounded"
+            />
+
+            <input
+              type="text"
+              name="waterRequirement"
+              placeholder="Nước tưới (Nhiều, Trung bình...)"
+              value={formData.waterRequirement}
+              onChange={handleChange}
+              className="border p-2 rounded"
+            />
+
+            <input
+              type="text"
+              name="soilType"
+              placeholder="Loại đất (Tơi xốp...)"
+              value={formData.soilType}
               onChange={handleChange}
               className="border p-2 rounded"
             />
           </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={resetForm}
+              className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition"
+            >
+              Hủy
+            </button>
             <button
               type="submit"
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
             >
-              {editingId ? "Cập nhật" : "Thêm mới"}
+              {editingId !== null ? "Cập nhật" : "Thêm mới"}
             </button>
           </div>
         </form>
       )}
 
-      {/* Bảng danh sách sản phẩm */}
+      {/* 🔹 Bảng danh sách sản phẩm */}
       <div className="overflow-x-auto bg-white shadow-md rounded-lg">
         <table className="min-w-full border border-gray-200">
           <thead className="bg-green-600 text-white">
@@ -220,7 +288,10 @@ const AdminProductsPage: React.FC = () => {
               <th className="p-3 text-left">Tên sản phẩm</th>
               <th className="p-3 text-left">Giá</th>
               <th className="p-3 text-left">Tồn kho</th>
-              <th className="p-3 text-left">Mô tả</th>
+              <th className="p-3 text-left">Độ khó</th>
+              <th className="p-3 text-left">Ánh sáng</th>
+              <th className="p-3 text-left">Nước</th>
+              <th className="p-3 text-left">Đất</th>
               <th className="p-3 text-left">Hành động</th>
             </tr>
           </thead>
@@ -231,7 +302,10 @@ const AdminProductsPage: React.FC = () => {
                 <td className="p-3">{p.productName}</td>
                 <td className="p-3">{p.price.toLocaleString()} ₫</td>
                 <td className="p-3">{p.stock}</td>
-                <td className="p-3 text-sm text-gray-600">{p.description}</td>
+                <td className="p-3">{p.difficulty}</td>
+                <td className="p-3">{p.lightRequirement}</td>
+                <td className="p-3">{p.waterRequirement}</td>
+                <td className="p-3">{p.soilType}</td>
                 <td className="p-3 flex gap-2">
                   <button
                     onClick={() => handleEdit(p)}
@@ -250,7 +324,7 @@ const AdminProductsPage: React.FC = () => {
             ))}
             {products.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-500">
+                <td colSpan={9} className="p-4 text-center text-gray-500">
                   Không có sản phẩm nào.
                 </td>
               </tr>

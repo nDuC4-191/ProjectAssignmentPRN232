@@ -9,6 +9,8 @@ import PlantRecommendationPage from './pages/PlantRecommendationPage';
 import AdminProductsPage from "./pages/Admin/AdminProductsPage";
 import AdminCategoriesPage from "./pages/Admin/AdminCategoriesPage";
 import AdminUsersPage from "./pages/Admin/AdminUsersPage";
+import AdminDashboard from "./pages/Admin/AdminDashboard";
+
 
 
 function App() {
@@ -23,13 +25,16 @@ function App() {
                 🌱 PlantCare
               </Link>
 
-              <div className="flex gap-6">
-                <Link 
-  to="/admin/products"
+              
+              <div className="flex gap-6 items-center">
+        <Link 
+  to="/admin"
   className="text-gray-700 hover:text-green-600 font-medium transition"
 >
   Admin
 </Link>
+
+
 
                 <Link 
                   to="/my-plants" 
@@ -65,6 +70,7 @@ function App() {
           <Route path="/admin/products" element={<AdminProductsPage />} />
           <Route path="/admin/categories" element={<AdminCategoriesPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
         </Routes>
       </div>
     </BrowserRouter>
