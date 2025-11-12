@@ -3,15 +3,15 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import MyPlantsPage from './pages/MyPlantsPage';
 import PlantDetailPage from './pages/PlantDetailPage';
-import AddPlantPage from './pages/AddPlantPage'; // ✅ import thêm
+import AddPlantPage from './pages/AddPlantPage';
 import CareWikiPage from './pages/CareWikiPage';
 import PlantRecommendationPage from './pages/PlantRecommendationPage';
 import AdminProductsPage from "./pages/Admin/AdminProductsPage";
 import AdminCategoriesPage from "./pages/Admin/AdminCategoriesPage";
 import AdminUsersPage from "./pages/Admin/AdminUsersPage";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
-
-
+import AdminOrdersPage from "./pages/Admin/AdminOrdersPage"; // ✅ NEW
+import AdminOrderDetailPage from "./pages/Admin/AdminOrderDetailPage"; // ✅ NEW
 
 function App() {
   return (
@@ -25,16 +25,13 @@ function App() {
                 🌱 PlantCare
               </Link>
 
-              
               <div className="flex gap-6 items-center">
-        <Link 
-  to="/admin"
-  className="text-gray-700 hover:text-green-600 font-medium transition"
->
-  Admin
-</Link>
-
-
+                <Link 
+                  to="/admin"
+                  className="text-gray-700 hover:text-green-600 font-medium transition"
+                >
+                  Admin
+                </Link>
 
                 <Link 
                   to="/my-plants" 
@@ -63,14 +60,18 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/my-plants" element={<MyPlantsPage />} />
-          <Route path="/my-plants/add" element={<AddPlantPage />} />  {/* ✅ THÊM DÒNG NÀY TRƯỚC */}
-          <Route path="/my-plants/:id" element={<PlantDetailPage />} /> {/* 🟢 Sau "add" */}
+          <Route path="/my-plants/add" element={<AddPlantPage />} />
+          <Route path="/my-plants/:id" element={<PlantDetailPage />} />
           <Route path="/wiki" element={<CareWikiPage />} />
           <Route path="/recommendations" element={<PlantRecommendationPage />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/products" element={<AdminProductsPage />} />
           <Route path="/admin/categories" element={<AdminCategoriesPage />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/orders" element={<AdminOrdersPage />} /> {/* ✅ NEW */}
+          <Route path="/admin/orders/:id" element={<AdminOrderDetailPage />} /> {/* ✅ NEW */}
         </Routes>
       </div>
     </BrowserRouter>

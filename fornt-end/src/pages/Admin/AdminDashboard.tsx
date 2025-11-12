@@ -9,11 +9,12 @@ const AdminDashboard: React.FC = () => {
         🌿 Trang Quản Trị Hệ Thống PlantCare
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
         <Link
           to="/admin/products"
           className="bg-white p-8 rounded-2xl shadow-md hover:shadow-lg transition text-center border-t-4 border-green-600"
         >
+          <div className="text-5xl mb-4">🌱</div>
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Sản phẩm</h2>
           <p className="text-gray-500">Thêm, sửa, xóa và quản lý sản phẩm cây trồng</p>
         </Link>
@@ -22,6 +23,7 @@ const AdminDashboard: React.FC = () => {
           to="/admin/categories"
           className="bg-white p-8 rounded-2xl shadow-md hover:shadow-lg transition text-center border-t-4 border-blue-600"
         >
+          <div className="text-5xl mb-4">📁</div>
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Danh mục</h2>
           <p className="text-gray-500">Quản lý các loại danh mục cây</p>
         </Link>
@@ -30,8 +32,18 @@ const AdminDashboard: React.FC = () => {
           to="/admin/users"
           className="bg-white p-8 rounded-2xl shadow-md hover:shadow-lg transition text-center border-t-4 border-yellow-600"
         >
+          <div className="text-5xl mb-4">👥</div>
           <h2 className="text-2xl font-semibold text-gray-800 mb-2">Người dùng</h2>
           <p className="text-gray-500">Phân quyền, kích hoạt hoặc vô hiệu tài khoản</p>
+        </Link>
+
+        <Link
+          to="/admin/orders"
+          className="bg-white p-8 rounded-2xl shadow-md hover:shadow-lg transition text-center border-t-4 border-purple-600"
+        >
+          <div className="text-5xl mb-4">📦</div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-2">Đơn hàng</h2>
+          <p className="text-gray-500">Quản lý và theo dõi đơn hàng của khách</p>
         </Link>
       </div>
     </div>
