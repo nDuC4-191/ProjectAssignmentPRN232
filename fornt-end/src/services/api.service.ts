@@ -11,7 +11,7 @@ import type {
   ProductSuggestionDTO
 } from '../types/userPlant.types';
 
-const API_BASE_URL = 'http://localhost:7002/api'; 
+const API_BASE_URL = 'http://localhost:5239/api'; 
 // Tạo instance không có headers cứng
 const api = axios.create({
   baseURL: API_BASE_URL,

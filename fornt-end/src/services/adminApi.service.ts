@@ -50,4 +50,31 @@ export const adminApi = {
   setUserActive: async (id: number, isActive: boolean) => {
     await api.put(`/admin/users/${id}/active?isActive=${isActive}`);
   },
+
+  // --- ORDERS --- ✅ NEW
+  getOrders: async (status?: string, searchTerm?: string) => {
+    let url = '/admin/orders';
+    const params = new URLSearchParams();
+    
+    if (status) params.append('status', status);
+    if (searchTerm) params.append('searchTerm', searchTerm);
+    
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+    
+    const res = await api.get(url);
+    return res.data;
+  },
+  getOrderById: async (id: number) => {
+    const res = await api.get(`/admin/orders/${id}`);
+    return res.data;
+  },
+  updateOrderStatus: async (id: number, status: string) => {
+    await api.patch(`/admin/orders/${id}/status`, { status });
+  },
+  getOrderStatistics: async () => {
+    const res = await api.get('/admin/orders/statistics');
+    return res.data;
+  },
 };

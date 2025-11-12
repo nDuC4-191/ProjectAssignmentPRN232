@@ -15,18 +15,23 @@ namespace PlantCare.Application.Services
     {
         private readonly PlantCareContext _context;
         private readonly ICartService _cartService; // Tái sử dụng CartService
-        private readonly IEmailService _emailService; // Dùng để gửi mail
+        private readonly IEmailService _emailService; // Gửi mail
 
-        public OrderService(PlantCareContext context, ICartService cartService , IEmailService emailService )
+        public OrderService(PlantCareContext context, ICartService cartService, IEmailService emailService)
         {
             _context = context;
             _cartService = cartService;
             _emailService = emailService;
         }
 
+        // ==============================
+        // 🧾 PHẦN 1: USER SIDE (Checkout / Lịch sử / Chi tiết)
+        // ==============================
+
         public async Task<OrderDTO> CreateOrderAsync(int userId, CreateOrderDTO dto)
         {
-            OrderDTO createdOrderDto = null; // Biến để lưu DTO
+            OrderDTO createdOrderDto = null;
+
             using (var transaction = await _context.Database.BeginTransactionAsync())
             {
                 try
@@ -34,11 +39,9 @@ namespace PlantCare.Application.Services
                     // 1. Lấy giỏ hàng
                     var cart = await _cartService.GetCartByUserIdAsync(userId);
                     if (cart.Items == null || !cart.Items.Any())
-                    {
                         throw new InvalidOperationException("Giỏ hàng trống.");
-                    }
 
-                    // 2. Làm phẳng địa chỉ từ DTO thành string
+                    // 2. Làm phẳng địa chỉ từ DTO
                     string shippingAddressString =
                         $"{dto.ShippingAddress.FullName}, {dto.ShippingAddress.PhoneNumber}, {dto.ShippingAddress.AddressLine}, {dto.ShippingAddress.City}, {dto.ShippingAddress.Country}";
 
@@ -47,70 +50,58 @@ namespace PlantCare.Application.Services
                     {
                         UserId = userId,
                         CreatedAt = DateTime.UtcNow,
-                        Status = "Processing", // Trạng thái đầu
+                        Status = "Processing",
                         PaymentMethod = dto.PaymentMethod,
                         TotalAmount = cart.GrandTotal,
-                        Address = shippingAddressString // LƯU Ý QUAN TRỌNG
+                        Address = shippingAddressString
                     };
-                    _context.Orders.Add(order);
-                    await _context.SaveChangesAsync(); // Lưu để lấy OrderId
 
-                    // 4. Chuyển CartItems thành OrderItems và giảm tồn kho
+                    _context.Orders.Add(order);
+                    await _context.SaveChangesAsync();
+
+                    // 4. Tạo OrderDetail và giảm tồn kho
                     foreach (var item in cart.Items)
                     {
                         var product = await _context.Products.FindAsync(item.ProductId);
                         if (product == null || (product.Stock ?? 0) < item.Quantity)
-                        {
                             throw new InvalidOperationException($"Sản phẩm {item.ProductName} không đủ hàng.");
-                        }
 
-                        // Giảm tồn kho
                         product.Stock = (product.Stock ?? 0) - item.Quantity;
 
-                        // Tạo OrderDetail
                         var orderDetail = new OrderDetail
                         {
                             OrderId = order.OrderId,
                             ProductId = item.ProductId,
                             Quantity = item.Quantity,
-                            UnitPrice = item.Price // Lưu giá tại thời điểm mua
+                            UnitPrice = item.Price
                         };
                         _context.OrderDetails.Add(orderDetail);
                     }
 
-                    // 5. Xóa Cart
+                    // 5. Xóa giỏ hàng
                     await _cartService.ClearCartAsync(userId);
 
                     await _context.SaveChangesAsync();
-
                     await transaction.CommitAsync();
 
-                    // 6.Lấy DTO của đơn hàng vừa tạo (để gửi email)
+                    // 6. Lấy DTO của đơn hàng để gửi email
                     createdOrderDto = await GetOrderDetailsAsync(userId, order.OrderId);
-                    
-
-                    return await GetOrderDetailsAsync(userId, order.OrderId);
                 }
-                catch (Exception)
+                catch
                 {
                     await transaction.RollbackAsync();
                     throw;
                 }
             }
-            // 7. Gửi email xác nhận đơn hàng
+
+            // 7. Gửi email xác nhận
             if (createdOrderDto != null)
             {
                 var user = await _context.Users.FindAsync(userId);
-                if (user != null && user.Email != null)
-                {
-                    // Task: Xác nhận đơn hàng qua email
+                if (user?.Email != null)
                     await _emailService.SendOrderConfirmationEmailAsync(user.Email, createdOrderDto);
-                    // var user = await _context.Users.FindAsync(userId);
-                    // await _emailService.SendOrderConfirmationEmail(user.Email, order.OrderId);
-                }
             }
 
-            // 9. Trả về DTO
             return createdOrderDto;
         }
 
@@ -133,18 +124,15 @@ namespace PlantCare.Application.Services
         {
             var order = await _context.Orders
                 .Include(o => o.OrderDetails)
-                    .ThenInclude(od => od.Product) // Lấy cả thông tin Product
+                    .ThenInclude(od => od.Product)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId && o.UserId == userId);
 
             if (order == null)
                 throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
 
-            // Ánh xạ ngược từ string Address sang DTO (chỉ có thể điền vào 1 trường)
             var shippingAddressDto = new ShippingAddressDTO
             {
-                // Chỉ có thể trả về chuỗi đầy đủ
                 AddressLine = order.Address
-                // Các trường khác sẽ là null
             };
 
             return new OrderDTO
@@ -158,7 +146,7 @@ namespace PlantCare.Application.Services
                 {
                     ProductId = od.ProductId,
                     ProductName = od.Product.ProductName,
-                    Price = od.UnitPrice, // Lấy giá từ OrderDetail (chính xác)
+                    Price = od.UnitPrice,
                     Quantity = od.Quantity ?? 1
                 }).ToList()
             };
@@ -172,8 +160,7 @@ namespace PlantCare.Application.Services
                 {
                     OrderId = o.OrderId,
                     CurrentStatus = o.Status,
-                    LastUpdate = o.UpdatedAt ?? o.CreatedAt ?? DateTime.MinValue,
-                    // EstimatedDeliveryDate = null // Model chưa có trường này-có thể thêm sau
+                    LastUpdate = o.UpdatedAt ?? o.CreatedAt ?? DateTime.MinValue
                 })
                 .FirstOrDefaultAsync();
 
@@ -181,6 +168,114 @@ namespace PlantCare.Application.Services
                 throw new KeyNotFoundException("Không tìm thấy đơn hàng.");
 
             return order;
+        }
+
+        // ==============================
+        // 📊 PHẦN 2: ADMIN SIDE (Quản lý, cập nhật, thống kê)
+        // ==============================
+
+        public async Task<IEnumerable<OrderListDto>> GetAllAsync(string? status = null, string? searchTerm = null)
+        {
+            var query = _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderDetails)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(o => o.Status == status);
+
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                query = query.Where(o =>
+                    o.OrderId.ToString().Contains(searchTerm) ||
+                    o.User.FullName.Contains(searchTerm) ||
+                    o.User.Email.Contains(searchTerm));
+            }
+
+            return await query
+                .OrderByDescending(o => o.CreatedAt)
+                .Select(o => new OrderListDto
+                {
+                    OrderId = o.OrderId,
+                    UserId = o.UserId,
+                    UserName = o.User.FullName ?? "N/A",
+                    UserEmail = o.User.Email,
+                    Address = o.Address,
+                    PaymentMethod = o.PaymentMethod,
+                    TotalAmount = o.TotalAmount,
+                    Status = o.Status,
+                    TotalItems = o.OrderDetails.Sum(od => od.Quantity ?? 0),
+                    CreatedAt = o.CreatedAt,
+                    UpdatedAt = o.UpdatedAt
+                })
+                .ToListAsync();
+        }
+
+        public async Task<OrderDetailDto?> GetByIdAsync(int orderId)
+        {
+            var order = await _context.Orders
+                .Include(o => o.User)
+                .Include(o => o.OrderDetails)
+                    .ThenInclude(od => od.Product)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+
+            if (order == null)
+                return null;
+
+            return new OrderDetailDto
+            {
+                OrderId = order.OrderId,
+                UserId = order.UserId,
+                UserName = order.User.FullName ?? "N/A",
+                UserEmail = order.User.Email,
+                UserPhone = order.User.Phone,
+                Address = order.Address,
+                PaymentMethod = order.PaymentMethod,
+                TotalAmount = order.TotalAmount,
+                Status = order.Status,
+                CreatedAt = order.CreatedAt,
+                UpdatedAt = order.UpdatedAt,
+                OrderItems = order.OrderDetails.Select(od => new OrderItemDto
+                {
+                    OrderDetailId = od.OrderDetailId,
+                    ProductId = od.ProductId,
+                    ProductName = od.Product.ProductName,
+                    ProductImage = od.Product.ImageUrl,
+                    Quantity = od.Quantity,
+                    UnitPrice = od.UnitPrice,
+                    Subtotal = od.UnitPrice * (od.Quantity ?? 0)
+                }).ToList()
+            };
+        }
+
+        public async Task<bool> UpdateStatusAsync(int orderId, UpdateOrderStatusDto dto)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null)
+                return false;
+
+            order.Status = dto.Status;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<OrderStatisticsDto> GetStatisticsAsync()
+        {
+            var orders = await _context.Orders.ToListAsync();
+
+            return new OrderStatisticsDto
+            {
+                TotalOrders = orders.Count,
+                TotalRevenue = orders.Sum(o => o.TotalAmount ?? 0),
+                PendingOrders = orders.Count(o => o.Status == "Pending"),
+                ProcessingOrders = orders.Count(o => o.Status == "Processing"),
+                ShippingOrders = orders.Count(o => o.Status == "Shipping"),
+                DeliveredOrders = orders.Count(o => o.Status == "Delivered"),
+                CompletedOrders = orders.Count(o => o.Status == "Completed"),
+                CancelledOrders = orders.Count(o => o.Status == "Cancelled")
+            };
         }
     }
 }
