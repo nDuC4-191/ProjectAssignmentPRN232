@@ -20,7 +20,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "PlantCare API - Vinh",
+        Title = "PlantCare API",
         Version = "v1",
         Description = "API quản lý cây trồng cá nhân và gợi ý chăm sóc"
     });
@@ -61,7 +61,10 @@ builder.Services.AddDbContext<PlantCareContext>(options =>
 builder.Services.AddScoped<ICategoryRepository, CategoryDARepository>();
 // 2. Đăng ký Services (Business Logic)
 builder.Services.AddScoped<ICategoryDAService, CategoryDAService>();
-
+builder.Services.AddScoped<IFeedbackService, FeedbackService>(); //Cảnh
+builder.Services.AddScoped<IEmailService, EmailService>(); //Cảnh
+builder.Services.AddScoped<ICartService, CartService>(); //Cảnh
+builder.Services.AddScoped<IOrderService, OrderService>(); //Cảnh
 builder.Services.AddScoped<IUserDAService, UserDAService>();
 builder.Services.AddScoped<IProductDAService, ProductDAService>();
 

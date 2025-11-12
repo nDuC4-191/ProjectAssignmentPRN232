@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using PlantCare.Application.DTOs.Common;
 using PlantCare.Application.DTOs.ProductDADTO;
 using PlantCare.Application.Interfaces;
 using PlantCare.Infrastructure.Models;
@@ -7,6 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using PlantCare.Application.DTOs.ProductDADTO; 
+using PlantCare.Application.DTOs.Common;  
 
 namespace PlantCare.Application.Services
 {
@@ -29,7 +32,7 @@ namespace PlantCare.Application.Services
                     ProductName = p.ProductName,
                     Description = p.Description,
                     Price = p.Price,
-                    Stock = p.Stock,
+                    Stock = p.Stock ?? 0, // Handle nullable int
                     Difficulty = p.Difficulty,
                     LightRequirement = p.LightRequirement,
                     WaterRequirement = p.WaterRequirement,
@@ -50,7 +53,7 @@ namespace PlantCare.Application.Services
                 ProductName = p.ProductName,
                 Description = p.Description,
                 Price = p.Price,
-                Stock = p.Stock,
+                Stock = p.Stock ?? 0,
                 Difficulty = p.Difficulty,
                 LightRequirement = p.LightRequirement,
                 WaterRequirement = p.WaterRequirement,
@@ -106,6 +109,77 @@ namespace PlantCare.Application.Services
             _context.Products.Remove(product);
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<PagedResult<ProductDADto>> GetProductsAsync(ProductQueryParameters query)
+        {
+            // Bắt đầu query từ DbSet
+            var queryable = _context.Products
+                .Where(p => (p.Stock ?? 0) > 0); // Chỉ lấy sản phẩm còn hàng
+
+            // fiter theo Search (Tên)
+            if (!string.IsNullOrEmpty(query.Search))
+            {
+                queryable = queryable.Where(p => p.ProductName.Contains(query.Search));
+            }
+
+            // fiter theo Category
+            if (query.CategoryId.HasValue)
+            {
+                queryable = queryable.Where(p => p.CategoryId == query.CategoryId.Value);
+            }
+
+            // fiter theo Giá
+            if (query.MinPrice.HasValue)
+            {
+                queryable = queryable.Where(p => p.Price >= query.MinPrice.Value);
+            }
+            if (query.MaxPrice.HasValue)
+            {
+                queryable = queryable.Where(p => p.Price <= query.MaxPrice.Value);
+            }
+
+            // fiter theo Độ khó
+            if (!string.IsNullOrEmpty(query.Difficulty))
+            {
+                queryable = queryable.Where(p => p.Difficulty == query.Difficulty);
+            }
+
+            // fiter theo Ánh sáng
+            if (!string.IsNullOrEmpty(query.LightRequirement))
+            {
+                queryable = queryable.Where(p => p.LightRequirement == query.LightRequirement);
+            }
+
+            // fiter theo Nước
+            if (!string.IsNullOrEmpty(query.WaterRequirement))
+            {
+                queryable = queryable.Where(p => p.WaterRequirement == query.WaterRequirement);
+            }
+
+            // Lấy tổng số lượng (trước khi phân trang)
+            var totalCount = await queryable.CountAsync();
+
+            // Phân trang
+            var items = await queryable
+                .Skip((query.PageNumber - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Select(p => new ProductDADto // Map sang DTO
+                {
+                    ProductID = p.ProductId,
+                    CategoryID = p.CategoryId,
+                    ProductName = p.ProductName,
+                    Description = p.Description,
+                    Price = p.Price,
+                    Stock = p.Stock ?? 0,
+                    Difficulty = p.Difficulty,
+                    LightRequirement = p.LightRequirement,
+                    WaterRequirement = p.WaterRequirement,
+                    SoilType = p.SoilType
+                })
+                .ToListAsync();
+
+            return new PagedResult<ProductDADto>(items, totalCount, query.PageNumber, query.PageSize);
         }
     }
 }

@@ -11,7 +11,7 @@ namespace PlantCare.Application.Services
 {
     public class CategoryDARepository : ICategoryRepository
     {
-        private readonly PlantCareContext _context; // Đảm bảo bạn dùng tên DbContext chính xác
+        private readonly PlantCareContext _context; 
 
         public CategoryDARepository(PlantCareContext context)
         {
