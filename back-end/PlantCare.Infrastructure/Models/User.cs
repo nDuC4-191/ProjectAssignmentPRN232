@@ -27,6 +27,12 @@ public partial class User
 
     public DateTime? UpdatedAt { get; set; }
 
+    public bool IsEmailVerified { get; set; }
+
+    public string? EmailVerificationToken { get; set; }
+
+    public DateTime? EmailVerificationTokenExpiry { get; set; }
+
     public virtual ICollection<ActivityLog> ActivityLogs { get; set; } = new List<ActivityLog>();
 
     public virtual ICollection<CareSuggestion> CareSuggestions { get; set; } = new List<CareSuggestion>();
