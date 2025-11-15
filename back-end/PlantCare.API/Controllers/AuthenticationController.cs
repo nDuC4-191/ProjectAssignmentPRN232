@@ -213,5 +213,13 @@ namespace PlantCare.API.Controllers
                 return BadRequest(new { error = ex.Message });
             }
         }
+
+    
+    [HttpPost("test-sql-update/{userId}")]
+        public async Task<IActionResult> TestSqlUpdate(int userId)
+        {
+            var result = await _authService.DirectSqlUpdateTestAsync(userId);
+            return Ok(result);
+        }
     }
-}
+    }

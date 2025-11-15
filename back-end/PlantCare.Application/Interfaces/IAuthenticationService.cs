@@ -14,5 +14,6 @@ namespace PlantCare.Application.Interfaces
         Task<bool> ChangePasswordAsync(int userId, ChangePasswordDTO dto);
         Task<bool> LogoutAsync(int userId);  // FIXED
         Task<User?> GetUserByEmailAsync(string email); // FIXED
+        Task<object> DirectSqlUpdateTestAsync(int userId);
     }
 }
