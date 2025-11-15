@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PlantCare.Application.DTOs.ProductDADTO;
 using PlantCare.Application.Interfaces;
+using PlantCare.Application.Services;
 
 namespace PlantCare.API.Controllers
 {
@@ -13,16 +14,13 @@ namespace PlantCare.API.Controllers
         private readonly IFeedbackService _feedbackService;
         private readonly ICareSuggestionService _careSuggestionService; // (Code của Vinh)
 
-        public ProductsController(IProductDAService productService, ICareSuggestionService careSuggestionService)
+        public ProductsController(IProductDAService productService, ICareSuggestionService careSuggestionService, IFeedbackService feedbackService)
         {
             _productService = productService;
             _careSuggestionService = careSuggestionService;
-        }
-
-        public ProductsController(IFeedbackService feedbackService)
-        {
             _feedbackService = feedbackService;
         }
+
 
         // Task: Tìm kiếm và Lọc sản phẩm.
         // Lấy danh sách sản phẩm public, hỗ trợ lọc và phân trang.

@@ -43,7 +43,6 @@ public partial class PlantCareContext : DbContext
 
     public virtual DbSet<UserPlant> UserPlants { get; set; }
 
-    
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ActivityLog>(entity =>

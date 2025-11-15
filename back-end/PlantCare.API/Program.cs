@@ -55,6 +55,7 @@ builder.Services.AddSwaggerGen(options =>
             Array.Empty<string>()
         }
     });
+    options.CustomSchemaIds(type => type.FullName);
 });
 
 // DbContext
