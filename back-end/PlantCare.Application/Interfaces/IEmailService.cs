@@ -7,9 +7,12 @@ using System.Threading.Tasks;
 
 namespace PlantCare.Application.Interfaces
 {
-    public interface IEmailService
-    {
-        // Gửi email xác nhận đơn hàng
-        Task SendOrderConfirmationEmailAsync(string userEmail, OrderDTO order);
+
+        public interface IEmailService
+        {
+            Task SendEmailAsync(string to, string subject, string htmlMessage);
+            Task SendOrderConfirmationEmailAsync(string userEmail, OrderDTO order);
+        
+
     }
 }

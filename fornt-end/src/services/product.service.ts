@@ -15,7 +15,7 @@ const getProductById = async (id: number): Promise<Product> => {
 };
 
 const getCategories = async (): Promise<Category[]> => {
-    const res = await api.get('/categories');
+    const res = await api.get('/categorys');
     return res.data;
 };
 

@@ -1,23 +1,25 @@
-﻿// Path: PlantCare.API/Program.cs
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Newtonsoft.Json;
 using PlantCare.Application.Interfaces;
 using PlantCare.Application.Interfaces.Repository;
 using PlantCare.Application.Services;
 using PlantCare.Infrastructure.Models;
 using System.Text;
-using PlantCare.Application.DTOs.UserOrders;  
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
-builder.Services.AddControllers();
+// Controllers + JSON
+builder.Services.AddControllers()
+    .AddNewtonsoftJson(options =>
+        options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+    );
+
 builder.Services.AddEndpointsApiExplorer();
 
-// ============================================
-// ✅ SWAGGER CONFIGURATION - ĐÃ SỬA
-// ============================================
+// Swagger
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -27,10 +29,8 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API quản lý cây trồng cá nhân và gợi ý chăm sóc"
     });
 
-    // ✅ FIX: Dùng full namespace để tránh conflict tên DTO
     options.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
 
-    // JWT Bearer trong Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -38,7 +38,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Nhập token vào đây (chỉ cần paste, KHÔNG gõ chữ Bearer)"
+        Description = "Dán token vào đây (chỉ cần token, KHÔNG gõ Bearer)"
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -52,50 +52,50 @@ builder.Services.AddSwaggerGen(options =>
                     Id = "Bearer"
                 }
             },
-            new string[] {}
+            Array.Empty<string>()
         }
     });
 });
 
-// Database Context
+// DbContext
 builder.Services.AddDbContext<PlantCareContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
 
-// ============================================
-// REGISTER SERVICES
-// ============================================
+// Email config
+builder.Services.Configure<PlantCare.Application.Settings.EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings")
+);
 
-// --- Đức Anh ---
+// HttpContext
+builder.Services.AddHttpContextAccessor();
+
+// Dependency Injection
 builder.Services.AddScoped<ICategoryRepository, CategoryDARepository>();
 builder.Services.AddScoped<ICategoryDAService, CategoryDAService>();
 builder.Services.AddScoped<IUserDAService, UserDAService>();
 builder.Services.AddScoped<IProductDAService, ProductDAService>();
 
-// --- Cảnh ---
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
-// --- Vinh ---
 builder.Services.AddScoped<IUserPlantService, UserPlantService>();
 builder.Services.AddScoped<ICareSuggestionService, CareSuggestionService>();
 builder.Services.AddScoped<IPlantCareTipService, PlantCareTipService>();
 
-// --- Vũ ---
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IUserOrderService, UserOrderService>();
 builder.Services.AddScoped<IShippingAddressService, ShippingAddressService>();
 
-// --- Nhật ---
-// (IOrderService đã đăng ký ở trên rồi)
-
-// ============================================
-// JWT AUTHENTICATION
-// ============================================
+// JWT
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
+
+if (string.IsNullOrEmpty(secretKey))
+    throw new Exception("JWT SecretKey is missing in appsettings.json!");
 
 builder.Services.AddAuthentication(options =>
 {
@@ -118,30 +118,34 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ============================================
 // CORS
-// ============================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowCredentials()
+              .SetIsOriginAllowed(origin => true);
     });
 });
 
 var app = builder.Build();
 
-// ============================================
-// SEED ADMIN USER
-// ============================================
+// Auto migrate
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<PlantCareContext>();
+    db.Database.Migrate();
+}
+
+// Seed Admin
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PlantCareContext>();
     var adminConfig = builder.Configuration.GetSection("AdminAccount");
-
     string adminEmail = adminConfig["Email"];
+
     if (!context.Users.Any(u => u.Email == adminEmail))
     {
         var admin = new User
@@ -162,16 +166,13 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// ============================================
-// CONFIGURE HTTP REQUEST PIPELINE
-// ============================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "PlantCare API V1");
-        c.RoutePrefix = string.Empty; // Swagger tại root
+        c.RoutePrefix = string.Empty;
     });
 }
 
@@ -181,5 +182,4 @@ app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();

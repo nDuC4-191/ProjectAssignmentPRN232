@@ -1,20 +1,18 @@
 ﻿using PlantCare.Application.DTOs.Authentication;
 using PlantCare.Infrastructure.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PlantCare.Application.Interfaces
 {
     public interface IAuthenticationService
     {
-        Task<string?> RegisterAsync(RegisterDTO model);
-        Task<string?> LoginAsync(LoginDTO model);
+        Task<bool> RegisterAsync(RegisterDTO model);
+        Task<(bool Success, string Message, string? Token)> LoginAsync(LoginDTO model);
+        Task<(bool Success, string Message)> VerifyEmailAsync(string token);
+        Task<(bool Success, string Message)> ResendVerifyEmailAsync(string email);
         Task<bool> ForgotPasswordAsync(string email);
-        Task<User?> GetUserByEmailAsync(string email);
+        Task<bool> ResetPasswordAsync(string token, string newPassword);
         Task<bool> ChangePasswordAsync(int userId, ChangePasswordDTO dto);
-        Task<bool> LogoutAsync(int userId);
+        Task<bool> LogoutAsync(int userId);  // FIXED
+        Task<User?> GetUserByEmailAsync(string email); // FIXED
     }
 }

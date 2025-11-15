@@ -1,17 +1,17 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.tsx";
 
-// Import 2 Provider mới
-import { AuthProvider } from './contexts/AuthContext.tsx' // (Tạo ở bước 4.1)
-import { CartProvider } from './contexts/CartContext.tsx' // (Tạo ở bước 4.2)
-// Import BrowserRouter (vì chúng ta sẽ xóa nó khỏi App.tsx)
-import { BrowserRouter } from 'react-router-dom'; 
+// === Context Providers ===
+import { AuthProvider } from "./contexts/AuthContext.tsx";
+import { CartProvider } from "./contexts/CartContext.tsx";
 
-createRoot(document.getElementById('root')!).render(
+// === React Router ===
+import { BrowserRouter } from "react-router-dom";
+
+createRoot(document.getElementById("root") as HTMLElement).render(
   <StrictMode>
-    {/* BrowserRouter nên bọc ngoài cùng */}
     <BrowserRouter>
       <AuthProvider>
         <CartProvider>
@@ -19,5 +19,5 @@ createRoot(document.getElementById('root')!).render(
         </CartProvider>
       </AuthProvider>
     </BrowserRouter>
-  </StrictMode>,
-)
+  </StrictMode>
+);

@@ -1,51 +1,83 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
+using MimeKit.Text;
+using Microsoft.Extensions.Options;
 using PlantCare.Application.DTOs.OrderDTO;
 using PlantCare.Application.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using PlantCare.Application.Settings;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace PlantCare.Application.Services
 {
     public class EmailService : IEmailService
     {
-        private readonly ILogger<EmailService> _logger;
+        private readonly EmailSettings _settings;
 
-        public EmailService(ILogger<EmailService> logger)
+        public EmailService(IOptions<EmailSettings> settings)
         {
-            _logger = logger;
+            _settings = settings.Value
+                ?? throw new ArgumentNullException(nameof(settings), "Email settings must not be null");
         }
 
-        public Task SendOrderConfirmationEmailAsync(string userEmail, OrderDTO order)
+        public async Task SendEmailAsync(string to, string subject, string htmlMessage)
         {
-            // === LOGIC GỬI EMAIL GIẢ LẬP ===
-            // Thay vì dùng SmtpClient, chúng ta ghi log
+            if (string.IsNullOrWhiteSpace(to))
+                throw new ArgumentNullException(nameof(to), "Email người nhận không được rỗng");
 
-            var emailBody = new StringBuilder();
-            emailBody.AppendLine($"Kính gửi khách hàng (Email: {userEmail}),");
-            emailBody.AppendLine($"Cảm ơn bạn đã đặt hàng. Đơn hàng #{order.OrderId} của bạn đã được xác nhận.");
-            emailBody.AppendLine($"Ngày đặt: {order.OrderDate.ToShortDateString()}");
-            emailBody.AppendLine($"Trạng thái: {order.Status}");
-            emailBody.AppendLine($"Tổng tiền: {order.TotalAmount:C}");
-            emailBody.AppendLine("\nChi tiết đơn hàng:");
+            if (string.IsNullOrWhiteSpace(_settings.SenderEmail))
+                throw new InvalidOperationException("SenderEmail chưa được cấu hình trong EmailSettings");
+
+            if (string.IsNullOrWhiteSpace(_settings.SmtpServer))
+                throw new InvalidOperationException("SmtpServer chưa được cấu hình trong EmailSettings");
+
+            var email = new MimeMessage();
+            email.From.Add(new MailboxAddress(_settings.SenderName ?? "PlantCare System", _settings.SenderEmail));
+            email.To.Add(MailboxAddress.Parse(to));
+            email.Subject = subject ?? "(no subject)";
+            email.Body = new TextPart(TextFormat.Html) { Text = htmlMessage ?? "" };
+
+            try
+            {
+                using var smtp = new SmtpClient();
+                await smtp.ConnectAsync(_settings.SmtpServer, _settings.Port, SecureSocketOptions.StartTls);
+
+                // Chỉ authenticate nếu có mật khẩu (Gmail App Password)
+                if (!string.IsNullOrWhiteSpace(_settings.Password))
+                    await smtp.AuthenticateAsync(_settings.SenderEmail, _settings.Password);
+
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                Console.WriteLine($"📧 Email sent to {to} successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Email sending failed: {ex.Message}");
+                Console.WriteLine("⚠ Gợi ý kiểm tra:");
+                Console.WriteLine(" - App Password Gmail có đúng không?");
+                Console.WriteLine(" - Tài khoản Google đã bật 2FA chưa?");
+                Console.WriteLine(" - Có bị chặn bởi tường lửa mạng không?");
+                // Không throw để hệ thống không crash
+            }
+        }
+
+        public async Task SendOrderConfirmationEmailAsync(string userEmail, OrderDTO order)
+        {
+            var body = new StringBuilder();
+            body.AppendLine($"<p>Xin chào <strong>{userEmail}</strong>,</p>");
+            body.AppendLine($"<p>Cảm ơn bạn đã đặt hàng. Đơn hàng <strong>#{order.OrderId}</strong> đã được xác nhận.</p>");
+            body.AppendLine($"<p>Ngày đặt: <strong>{order.OrderDate:dd/MM/yyyy}</strong></p>");
+            body.AppendLine($"<p>Trạng thái: <strong>{order.Status}</strong></p>");
+            body.AppendLine($"<p>Tổng tiền: <strong>{order.TotalAmount:C}</strong></p>");
+            body.AppendLine("<ul>");
 
             foreach (var item in order.OrderItems)
-            {
-                emailBody.AppendLine($" - {item.ProductName} (SL: {item.Quantity}) - {item.Price:C}");
-            }
+                body.AppendLine($"<li>{item.ProductName} - SL: {item.Quantity} - {item.Price:C}</li>");
 
-            emailBody.AppendLine("\nCảm ơn bạn đã tin tưởng PlantCare!");
+            body.AppendLine("</ul><p>Trân trọng, PlantCare!</p>");
 
-            // Ghi ra Console/Debug Log thay vì gửi mail
-            _logger.LogInformation("--- SENDING EMAIL (MOCK) ---");
-            _logger.LogInformation($"To: {userEmail}");
-            _logger.LogInformation($"Subject: Xác nhận đơn hàng #{order.OrderId}");
-            _logger.LogInformation($"Body: \n{emailBody}");
-            _logger.LogInformation("--- END OF EMAIL (MOCK) ---");
-
-            return Task.CompletedTask;
+            await SendEmailAsync(userEmail, $"Xác nhận đơn hàng #{order.OrderId}", body.ToString());
         }
     }
 }
