@@ -3,19 +3,15 @@ using PlantCare.Application.DTOs.Order;
 using PlantCare.Application.DTOs.OrderDTO;
 using PlantCare.Application.Interfaces;
 using PlantCare.Infrastructure.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace PlantCare.Application.Services
 {
     public class OrderService : IOrderService
     {
         private readonly PlantCareContext _context;
-        private readonly ICartService _cartService; // Tái sử dụng CartService
-        private readonly IEmailService _emailService; // Gửi mail
+        private readonly ICartService _cartService;
+        private readonly IEmailService _emailService;
 
         public OrderService(PlantCareContext context, ICartService cartService, IEmailService emailService)
         {
@@ -28,7 +24,8 @@ namespace PlantCare.Application.Services
         // 🧾 PHẦN 1: USER SIDE (Checkout / Lịch sử / Chi tiết)
         // ==============================
 
-        public async Task<OrderDTO> CreateOrderAsync(int userId, CreateOrderDTO dto)
+        // ✅ ĐỔI: CreateOrderDTO → CreateOrderRequestDTO
+        public async Task<OrderDTO> CreateOrderAsync(int userId, CreateOrderRequestDTO dto)
         {
             OrderDTO createdOrderDto = null;
 
@@ -277,5 +274,7 @@ namespace PlantCare.Application.Services
                 CancelledOrders = orders.Count(o => o.Status == "Cancelled")
             };
         }
+
+       
     }
 }

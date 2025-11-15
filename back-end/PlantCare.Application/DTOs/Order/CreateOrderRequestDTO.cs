@@ -1,4 +1,5 @@
-﻿using PlantCare.Application.DTOs.OrderDTO;
+﻿// DTOs/Order/CreateOrderRequestDTO.cs (ĐỔI TÊN FILE)
+using PlantCare.Application.DTOs.OrderDTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,8 +8,8 @@ using System.Threading.Tasks;
 
 namespace PlantCare.Application.DTOs.Order
 {
-    // DTO client gửi lên khi bấm "Thanh toán"
-    public class CreateOrderDTO
+    // ✅ ĐỔI TÊN: CreateOrderDTO → CreateOrderRequestDTO
+    public class CreateOrderRequestDTO
     {
         public ShippingAddressDTO ShippingAddress { get; set; }
         public string PaymentMethod { get; set; } // "COD", "VNPAY", "MOMO"
