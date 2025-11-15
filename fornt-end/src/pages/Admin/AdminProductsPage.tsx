@@ -115,7 +115,7 @@ const AdminProductsPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
     try {
-      await api.delete(`/admin/products/${id}`); // ✅ đảm bảo đúng URL
+      await api.delete(`/admin/products/${id}`);
       alert("🗑️ Xóa thành công!");
       setProducts(products.filter((p) => p.productId !== id));
     } catch (err: any) {
