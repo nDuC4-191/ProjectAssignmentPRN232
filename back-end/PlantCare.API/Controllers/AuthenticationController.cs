@@ -87,7 +87,7 @@ namespace PlantCare.API.Controllers
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
-            var userIdClaim = User.FindFirst("sub")?.Value;
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userIdClaim))
                 return Unauthorized("Không tìm thấy user trong token!");
 
@@ -97,6 +97,7 @@ namespace PlantCare.API.Controllers
 
             return Ok("Đăng xuất thành công!");
         }
+
         [HttpGet("debug")]
         public IActionResult DebugUser()
         {
