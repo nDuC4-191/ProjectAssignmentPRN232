@@ -8,14 +8,16 @@ using PlantCare.Application.Interfaces.Repository;
 using PlantCare.Application.Services;
 using PlantCare.Infrastructure.Models;
 using System.Text;
-
+using PlantCare.Application.DTOs.UserOrders;  
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// Swagger với JWT
+// ============================================
+// ✅ SWAGGER CONFIGURATION - ĐÃ SỬA
+// ============================================
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
@@ -25,16 +27,8 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API quản lý cây trồng cá nhân và gợi ý chăm sóc"
     });
 
-
-    //options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    //{
-    //    Name = "Authorization",
-    //    Type = SecuritySchemeType.Http,
-    //    Scheme = "Bearer",
-    //    BearerFormat = "JWT",
-    //    In = ParameterLocation.Header,
-    //    Description = "Nhập JWT token: Bearer {your token}"
-    //});
+    // ✅ FIX: Dùng full namespace để tránh conflict tên DTO
+    options.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
 
     // JWT Bearer trong Swagger
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -46,7 +40,6 @@ builder.Services.AddSwaggerGen(options =>
         In = ParameterLocation.Header,
         Description = "Nhập token vào đây (chỉ cần paste, KHÔNG gõ chữ Bearer)"
     });
-
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -67,38 +60,40 @@ builder.Services.AddSwaggerGen(options =>
 // Database Context
 builder.Services.AddDbContext<PlantCareContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-// --- Đức Anh ---
 
-// 1. Đăng ký Repositories (Data Access Logic)
+// ============================================
+// REGISTER SERVICES
+// ============================================
+
+// --- Đức Anh ---
 builder.Services.AddScoped<ICategoryRepository, CategoryDARepository>();
-// 2. Đăng ký Services (Business Logic)
 builder.Services.AddScoped<ICategoryDAService, CategoryDAService>();
-builder.Services.AddScoped<IFeedbackService, FeedbackService>(); //Cảnh
-builder.Services.AddScoped<IEmailService, EmailService>(); //Cảnh
-builder.Services.AddScoped<ICartService, CartService>(); //Cảnh
-builder.Services.AddScoped<IOrderService, OrderService>(); //Cảnh
 builder.Services.AddScoped<IUserDAService, UserDAService>();
 builder.Services.AddScoped<IProductDAService, ProductDAService>();
-// ============================================
-// ✅ Admin Order Services - Phần của Nhật
-// ============================================
+
+// --- Cảnh ---
+builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
-// ============================================
-// ✅ Register Services - Phần của Vinh
-// ============================================
+// --- Vinh ---
 builder.Services.AddScoped<IUserPlantService, UserPlantService>();
 builder.Services.AddScoped<ICareSuggestionService, CareSuggestionService>();
-builder.Services.AddScoped<IPlantCareTipService, PlantCareTipService>();  // ⭐ THÊM DÒNG NÀY
+builder.Services.AddScoped<IPlantCareTipService, PlantCareTipService>();
 
-// // Register Authentication Service -  Phần của Vũ
+// --- Vũ ---
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 builder.Services.AddScoped<IUserProfileService, UserProfileService>();
 builder.Services.AddScoped<IUserOrderService, UserOrderService>();
 builder.Services.AddScoped<IShippingAddressService, ShippingAddressService>();
 
+// --- Nhật ---
+// (IOrderService đã đăng ký ở trên rồi)
 
-// JWT Authentication
+// ============================================
+// JWT AUTHENTICATION
+// ============================================
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"];
 
@@ -123,7 +118,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// ============================================
 // CORS
+// ============================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -136,7 +133,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Seed Admin User
+// ============================================
+// SEED ADMIN USER
+// ============================================
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<PlantCareContext>();
@@ -163,7 +162,9 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
-// Configure the HTTP request pipeline
+// ============================================
+// CONFIGURE HTTP REQUEST PIPELINE
+// ============================================
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -173,7 +174,6 @@ if (app.Environment.IsDevelopment())
         c.RoutePrefix = string.Empty; // Swagger tại root
     });
 }
-
 
 app.UseHttpsRedirection();
 app.UseCors("AllowAll");

@@ -27,42 +27,78 @@ namespace PlantCare.API.Controllers
 
         // Task: Thanh toán (Checkout)
         [HttpPost("checkout")]
-        public async Task<IActionResult> Checkout([FromBody] CreateOrderDTO dto)
+        public async Task<IActionResult> Checkout([FromBody] CreateOrderRequestDTO dto) // ✅ ĐỔI TÊN
         {
-            var userId = GetCurrentUserId();
-            // OrderService sẽ tự động gọi EmailService (chúng ta sẽ implement ở Bước 3)
-            var order = await _orderService.CreateOrderAsync(userId, dto);
-
-            return Ok(order);
-
+            try
+            {
+                var userId = GetCurrentUserId();
+                var order = await _orderService.CreateOrderAsync(userId, dto);
+                return Ok(new { success = true, data = order, message = "Đặt hàng thành công" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi đặt hàng", error = ex.Message });
+            }
         }
 
-        // Task: Lịch sử mua hàng (Cũng là 1 phần của Vũ)
+        // Task: Lịch sử mua hàng
         [HttpGet("history")]
         public async Task<IActionResult> GetOrderHistory()
         {
-            var userId = GetCurrentUserId();
-            var orders = await _orderService.GetOrderHistoryAsync(userId);
-            return Ok(orders);
+            try
+            {
+                var userId = GetCurrentUserId();
+                var orders = await _orderService.GetOrderHistoryAsync(userId);
+                return Ok(new { success = true, data = orders });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi tải lịch sử", error = ex.Message });
+            }
         }
 
         // Task: Theo dõi tình trạng đơn hàng
         [HttpGet("{orderId}/status")]
         public async Task<IActionResult> GetOrderStatus(int orderId)
         {
-            var userId = GetCurrentUserId();
-            var status = await _orderService.GetOrderStatusAsync(userId, orderId);
-            if (status == null) return NotFound("Không tìm thấy đơn hàng");
-            return Ok(status);
+            try
+            {
+                var userId = GetCurrentUserId();
+                var status = await _orderService.GetOrderStatusAsync(userId, orderId);
+                return Ok(new { success = true, data = status });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy đơn hàng" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi lấy trạng thái", error = ex.Message });
+            }
         }
 
         // Task: Lấy chi tiết 1 đơn hàng
         [HttpGet("{orderId}/details")]
         public async Task<IActionResult> GetOrderDetails(int orderId)
         {
-            var userId = GetCurrentUserId();
-            var details = await _orderService.GetOrderDetailsAsync(userId, orderId);
-            return Ok(details);
+            try
+            {
+                var userId = GetCurrentUserId();
+                var details = await _orderService.GetOrderDetailsAsync(userId, orderId);
+                return Ok(new { success = true, data = details });
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(new { success = false, message = "Không tìm thấy đơn hàng" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = "Lỗi khi lấy chi tiết", error = ex.Message });
+            }
         }
     }
 }
