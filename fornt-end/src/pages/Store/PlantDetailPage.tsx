@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { userPlantApi } from "../services/api.service";
-import type { UserPlantDetailDTO } from "../types/userPlant.types";
+import { userPlantApi } from "../../services/api.service";
+import type { UserPlantDetailDTO } from "../../types/userPlant.types";
 
 const PlantDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

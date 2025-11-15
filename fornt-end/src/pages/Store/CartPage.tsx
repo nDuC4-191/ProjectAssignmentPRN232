@@ -1,67 +1,115 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 
 const CartPage: React.FC = () => {
-    const { cart, loading, updateItemInCart, removeItemFromCart } = useCart();
+    const { cartItems, updateQuantity, removeFromCart, refreshCart } = useCart();
 
-    if (loading) return <p>Đang tải giỏ hàng...</p>;
+    useEffect(() => {
+        refreshCart();
+    }, [refreshCart]);
 
-    if (!cart || cart.items.length === 0) {
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        e.currentTarget.src = '/images/placeholder.png';
+    };
+
+    const grandTotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    if (!cartItems || cartItems.length === 0) {
         return (
-            <div className="text-center">
+            <div className="text-center py-16">
+                <div className="text-6xl mb-4">🛒</div>
                 <h1 className="text-3xl font-bold mb-4">Giỏ hàng của bạn</h1>
-                <p>Giỏ hàng trống.</p>
-                <Link to="/" className="text-green-600 mt-4 inline-block">Tiếp tục mua sắm</Link>
+                <p className="text-gray-600 mb-6">Giỏ hàng trống. Hãy thêm sản phẩm vào giỏ hàng!</p>
+                <Link 
+                    to="/" 
+                    className="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition"
+                >
+                    Tiếp tục mua sắm
+                </Link>
             </div>
         );
     }
 
     return (
-        <div>
+        <div className="container mx-auto px-4 py-8">
             <h1 className="text-3xl font-bold mb-6">Giỏ hàng của bạn</h1>
-            <div className="grid grid-cols-3 gap-8">
-                {/* Task: Giỏ hàng (Cập nhật / Xóa) */}
-                <div className="col-span-2 space-y-4">
-                    {cart.items.map(item => (
-                        <div key={item.productId} className="flex items-center gap-4 border-b pb-4">
-                            <img src={item.imageUrl || 'https://via.placeholder.com/100'} alt={item.productName} className="w-20 h-20 rounded-md object-cover" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-4">
+                    {cartItems.map(item => (
+                        <div key={item.id} className="flex items-center gap-4 border rounded-lg p-4 bg-white shadow-sm">
+                            <img 
+                                src={item.plantImage || '/images/placeholder.png'} 
+                                alt={item.plantName}
+                                onError={handleImageError}
+                                className="w-20 h-20 rounded-md object-cover"
+                            />
                             <div className="flex-grow">
-                                <h3 className="font-semibold">{item.productName}</h3>
+                                <h3 className="font-semibold text-lg">{item.plantName}</h3>
                                 <p className="text-gray-600">{item.price.toLocaleString()} VND</p>
                             </div>
-                            <input 
-                                type="number" 
-                                value={item.quantity}
-                                onChange={(e) => updateItemInCart({ productId: item.productId, newQuantity: parseInt(e.target.value) })}
-                                className="w-16 border p-1 rounded-md text-center"
-                                min="1"
-                            />
-                            <p className="font-semibold w-24 text-right">{item.totalPrice.toLocaleString()} VND</p>
-                            <button onClick={() => removeItemFromCart(item.productId)} className="text-red-500 hover:text-red-700">Xóa</button>
+                            <div className="flex items-center gap-4">
+                                <input 
+                                    type="number" 
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                        const newQty = parseInt(e.target.value);
+                                        if (newQty > 0) {
+                                            updateQuantity(item.id, newQty);
+                                        }
+                                    }}
+                                    className="w-16 border border-gray-300 p-2 rounded-md text-center focus:ring-2 focus:ring-green-500"
+                                    min="1"
+                                />
+                                <p className="font-semibold w-32 text-right">
+                                    {(item.price * item.quantity).toLocaleString()} VND
+                                </p>
+                                <button 
+                                    onClick={() => removeFromCart(item.id)} 
+                                    className="text-red-500 hover:text-red-700 px-3 py-2 rounded hover:bg-red-50 transition"
+                                    title="Xóa sản phẩm"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>
                 
-                {/* Tổng kết */}
-                <div className="col-span-1 bg-gray-50 p-6 rounded-lg shadow-sm h-fit">
-                    <h2 className="text-2xl font-semibold mb-4">Tổng cộng</h2>
-                    <div className="flex justify-between mb-2">
-                        <span>Tạm tính:</span>
-                        <span>{cart.grandTotal.toLocaleString()} VND</span>
+                <div className="lg:col-span-1">
+                    <div className="bg-gray-50 p-6 rounded-lg shadow-md sticky top-4">
+                        <h2 className="text-2xl font-semibold mb-4">Tổng cộng</h2>
+                        <div className="space-y-2 mb-4">
+                            <div className="flex justify-between text-gray-600">
+                                <span>Tạm tính:</span>
+                                <span>{grandTotal.toLocaleString()} VND</span>
+                            </div>
+                            <div className="flex justify-between text-gray-600">
+                                <span>Phí vận chuyển:</span>
+                                <span>Miễn phí</span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between font-bold text-xl mt-4 pt-4 border-t border-gray-300">
+                            <span>Thành tiền:</span>
+                            <span className="text-green-600">{grandTotal.toLocaleString()} VND</span>
+                        </div>
+                        <Link 
+                            to="/checkout" 
+                            className="bg-green-600 text-white text-center w-full block py-3 rounded-lg font-semibold hover:bg-green-700 mt-6 transition"
+                        >
+                            Tiến hành thanh toán
+                        </Link>
+                        <Link 
+                            to="/" 
+                            className="text-green-600 text-center w-full block py-3 rounded-lg font-semibold hover:bg-green-50 mt-2 border border-green-600 transition"
+                        >
+                            Tiếp tục mua sắm
+                        </Link>
                     </div>
-                    {/* TODO: Phí ship */}
-                    <div className="flex justify-between font-bold text-xl mt-4 pt-4 border-t">
-                        <span>Thành tiền:</span>
-                        <span>{cart.grandTotal.toLocaleString()} VND</span>
-                    </div>
-                    {/* Task: Thanh toán (Link) */}
-                    <Link to="/checkout" className="bg-green-600 text-white text-center w-full block py-3 rounded-md font-semibold hover:bg-green-700 mt-6">
-                        Tiến hành thanh toán
-                    </Link>
                 </div>
             </div>
         </div>
     );
 };
+
 export default CartPage;

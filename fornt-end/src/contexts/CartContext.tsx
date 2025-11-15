@@ -1,103 +1,160 @@
-// Path: src/contexts/CartContext.tsx
-import { createContext, useState, useContext, useEffect } from 'react';
-import type { ReactNode } from 'react';
-// Sửa lỗi 'verbatimModuleSyntax'
-import type { Cart, AddToCartDTO, UpdateCartDTO } from '../types/cart.types';
+// src/contexts/CartContext.tsx
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useAuth } from './AuthContext';
 import { cartService } from '../services/cart.service';
-import { useAuth } from './AuthContext'; // Import từ file AuthContext
 
-// Định nghĩa 'shape' của Context
-interface CartContextType {
-    cart: Cart | null;
-    cartItemCount: number;
-    loading: boolean;
-    fetchCart: () => Promise<void>;
-    addItemToCart: (item: AddToCartDTO) => Promise<void>;
-    updateItemInCart: (item: UpdateCartDTO) => Promise<void>;
-    removeItemFromCart: (productId: number) => Promise<void>;
+interface CartItem {
+  id: number;
+  plantId: number;
+  plantName: string;
+  plantImage?: string;
+  price: number;
+  quantity: number;
 }
 
-// Tạo Context
+interface CartContextType {
+  cartItems: CartItem[];
+  cartCount: number;
+  addToCart: (item: CartItem) => Promise<void>;
+  removeFromCart: (itemId: number) => Promise<void>;
+  updateQuantity: (itemId: number, quantity: number) => Promise<void>;
+  clearCart: () => Promise<void>;
+  refreshCart: () => Promise<void>;
+}
+
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Tạo Provider
-export const CartProvider = ({ children }: { children: ReactNode }) => {
-    const [cart, setCart] = useState<Cart | null>(null);
-    const [loading, setLoading] = useState(false);
-    const { isAuthenticated } = useAuth(); // Lấy trạng thái đăng nhập
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, token } = useAuth();
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-    const fetchCart = async () => {
-        if (!isAuthenticated) {
-            setCart(null); // Không có giỏ hàng nếu chưa đăng nhập
-            return;
+  // Load cart từ localStorage khi mount (offline mode)
+  useEffect(() => {
+    if (isAuthenticated) {
+      const localCart = localStorage.getItem('cart');
+      if (localCart) {
+        try {
+          const parsed = JSON.parse(localCart);
+          setCartItems(Array.isArray(parsed) ? parsed : []);
+        } catch (e) {
+          setCartItems([]);
         }
-        setLoading(true);
-        try {
-            // Service trả về 'Cart'
-            const cartData = await cartService.getMyCart();
-            setCart(cartData);
-        } catch (error) {
-            console.error('Failed to fetch cart', error);
-            setCart(null);
-        } finally {
-            setLoading(false);
+      }
+    } else {
+      setCartItems([]);
+    }
+  }, [isAuthenticated]);
+
+  // Sync cartItems to localStorage
+  useEffect(() => {
+    if (isAuthenticated) {
+      localStorage.setItem('cart', JSON.stringify(cartItems));
+    }
+  }, [cartItems, isAuthenticated]);
+
+  const addToCart = async (item: CartItem) => {
+    try {
+      // Thử gọi API trước
+      await cartService.addToCart(item.plantId, item.quantity);
+      await refreshCart();
+    } catch (error: any) {
+      // Fallback: Update local state
+      setCartItems(prev => {
+        const existingItem = prev.find(i => i.plantId === item.plantId);
+        if (existingItem) {
+          return prev.map(i =>
+            i.plantId === item.plantId
+              ? { ...i, quantity: i.quantity + item.quantity }
+              : i
+          );
         }
-    };
+        return [...prev, item];
+      });
+    }
+  };
 
-    // Tự động tải giỏ hàng khi trạng thái đăng nhập thay đổi
-    useEffect(() => {
-        fetchCart();
-    }, [isAuthenticated]);
+  const removeFromCart = async (itemId: number) => {
+    try {
+      // ✅ Backend expects productId, not cartItemId
+      const item = cartItems.find(i => i.id === itemId);
+      if (item) {
+        await cartService.removeFromCart(item.plantId);
+        await refreshCart();
+      }
+    } catch (error: any) {
+      // Fallback: Update local state
+      setCartItems(prev => prev.filter(item => item.id !== itemId));
+    }
+  };
 
-    const addItemToCart = async (item: AddToCartDTO) => {
-        if (!isAuthenticated) return alert('Bạn cần đăng nhập để thêm vào giỏ hàng');
-        try {
-            // Sửa lỗi logic tương tự
-            const updatedCart = await cartService.addItem(item);
-            setCart(updatedCart);
-        } catch (error) { console.error('Failed to add item', error); }
-    };
+  const updateQuantity = async (itemId: number, quantity: number) => {
+    if (quantity <= 0) {
+      await removeFromCart(itemId);
+      return;
+    }
 
-    const updateItemInCart = async (item: UpdateCartDTO) => {
-        if (!isAuthenticated) return;
-        try {
-            const updatedCart = await cartService.updateItem(item);
-            setCart(updatedCart);
-        } catch (error) { console.error('Failed to update item', error); }
-    };
+    try {
+      // ✅ Backend expects productId, not cartItemId
+      const item = cartItems.find(i => i.id === itemId);
+      if (item) {
+        await cartService.updateQuantity(item.plantId, quantity);
+        await refreshCart();
+      }
+    } catch (error: any) {
+      // Fallback: Update local state
+      setCartItems(prev =>
+        prev.map(item =>
+          item.id === itemId ? { ...item, quantity } : item
+        )
+      );
+    }
+  };
 
-    const removeItemFromCart = async (productId: number) => {
-        if (!isAuthenticated) return;
-        try {
-            const updatedCart = await cartService.removeItem(productId);
-            setCart(updatedCart);
-        } catch (error) { console.error('Failed to remove item', error); }
-    };
+  const clearCart = async () => {
+    try {
+      await cartService.clearCart();
+      setCartItems([]);
+    } catch (error: any) {
+      // Fallback: Clear local state
+      setCartItems([]);
+      localStorage.removeItem('cart');
+    }
+  };
 
-    // Tính toán số lượng item
-    const cartItemCount = cart?.totalItems ?? 0;
+  const refreshCart = useCallback(async () => {
+    if (!isAuthenticated || !token) return;
 
-    // Return (phần JSX)
-    return (
-        <CartContext.Provider value={{ 
-            cart, 
-            cartItemCount, 
-            loading, 
-            fetchCart, 
-            addItemToCart, 
-            updateItemInCart, 
-            removeItemFromCart 
-        }}>
-            {children}
-        </CartContext.Provider>
-    );
+    try {
+      const cartData = await cartService.getMyCart();
+      setCartItems(cartData || []);
+    } catch (error: any) {
+      // Silent fail - không log gì
+    }
+  }, [isAuthenticated, token]);
+
+  const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <CartContext.Provider
+      value={{
+        cartItems,
+        cartCount,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        refreshCart,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
 };
 
-// Hook tùy chỉnh
 export const useCart = () => {
-    const context = useContext(CartContext);
-    if (context === undefined) {
-        throw new Error('useCart must be used within a CartProvider');
-    }
-    return context;
+  const context = useContext(CartContext);
+  if (context === undefined) {
+    throw new Error('useCart must be used within a CartProvider');
+  }
+  return context;
 };

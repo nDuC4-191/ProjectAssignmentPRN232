@@ -1,9 +1,8 @@
-// Path: src/contexts/AuthContext.tsx
+// src/contexts/AuthContext.tsx
 import { createContext, useState, useContext, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import type { User, AuthContextType } from '../types/auth.types'; // (Tạo ở bước 4.1)
-import api from '../services/api.service'; // Import 'api' từ service của Vinh
-// TODO: (Phần của Vũ) Import auth service (ví dụ: authService.getProfile())
+import type { User, AuthContextType } from '../types/auth.types';
+import api from '../services/api.service';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -14,21 +13,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         const initializeAuth = async () => {
-            const storedToken = localStorage.getItem('token'); // Lấy 'token'
+            const storedToken = localStorage.getItem('token');
+            const storedUser = localStorage.getItem('user');
             
-            if (storedToken) {
-                setToken(storedToken);
-                api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-                
+            if (storedToken && storedUser) {
                 try {
-                    // TODO: (Phần của Vũ)
-                    // Gọi API (ví dụ: /api/auth/profile) để lấy thông tin user
-                    // const { data: userData } = await authService.getProfile(); 
-                    // Giả sử Vũ có 1 hàm 'getProfile'
-                    // setUser(userData);
+                    const userData = JSON.parse(storedUser);
+                    setToken(storedToken);
+                    setUser(userData);
+                    api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
                 } catch (error) {
-                    console.error("Token không hợp lệ, đăng xuất:", error);
-                    logout(); // Token cũ/hỏng -> xóa nó đi
+                    console.error("Lỗi parse user data:", error);
+                    logout();
                 }
             }
             setIsLoading(false);
@@ -37,30 +33,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const login = (newToken: string, newUser: User) => {
-        localStorage.setItem('token', newToken); // Lưu 'token'
+        const normalizedUser = {
+            ...newUser,
+            role: newUser.role?.toLowerCase() || 'customer'
+        };
+
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(normalizedUser));
         api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
         setToken(newToken);
-        setUser(newUser);
+        setUser(normalizedUser);
     };
 
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         delete api.defaults.headers.common['Authorization'];
         setToken(null);
         setUser(null);
     };
 
+    // ✅ Thêm hàm updateUser để cập nhật thông tin user
+    const updateUser = (updatedData: Partial<User>) => {
+        if (!user) return;
+
+        const updatedUser = {
+            ...user,
+            ...updatedData
+        };
+
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+    };
+
     const isAuthenticated = !!token;
 
     return (
-        // === DÒNG SỬA Ở ĐÂY ===
-        <AuthContext.Provider value={{ user, token, isAuthenticated, login, logout, isLoading }}>
+        <AuthContext.Provider value={{ 
+            user, 
+            token, 
+            isAuthenticated, 
+            login, 
+            logout, 
+            updateUser, // ✅ Export updateUser
+            isLoading 
+        }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-// Hook tùy chỉnh
 export const useAuth = () => {
     const context = useContext(AuthContext);
     if (context === undefined) {

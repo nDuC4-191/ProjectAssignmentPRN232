@@ -1,7 +1,7 @@
 // src/pages/AddPlantPage.tsx
 import React, { useState } from 'react';
-import { userPlantApi } from '../services/api.service';
-import type { CreateUserPlantDTO } from '../types/userPlant.types';
+import { userPlantApi } from "../../services/api.service";
+import type { CreateUserPlantDTO } from "../../types/userPlant.types";
 import { useNavigate } from 'react-router-dom';
 
 const AddPlantPage: React.FC = () => {

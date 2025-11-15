@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { orderApi } from "../../services/orderApi.service";
-import type { OrderDetailDTO, OrderStatus } from "../../types/order.types";
+import type { OrderDetailDTO, OrderStatusType } from "../../types/order.types";
 import { ORDER_STATUSES } from "../../types/order.types";
 
 const AdminOrderDetailPage: React.FC = () => {
@@ -12,7 +12,7 @@ const AdminOrderDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<OrderStatus | "">("");
+  const [selectedStatus, setSelectedStatus] = useState<OrderStatusType>("Pending");
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
@@ -25,7 +25,14 @@ const AdminOrderDetailPage: React.FC = () => {
     try {
       const data = await orderApi.getOrderById(parseInt(id));
       setOrder(data);
-      setSelectedStatus(data.status as OrderStatus || "");
+      
+      // Validate status trước khi set
+      if (data.status && ORDER_STATUSES.includes(data.status as OrderStatusType)) {
+        setSelectedStatus(data.status as OrderStatusType);
+      } else {
+        setSelectedStatus("Pending");
+      }
+      
       setError("");
     } catch (err: any) {
       setError("Không thể tải chi tiết đơn hàng.");
@@ -275,7 +282,7 @@ const AdminOrderDetailPage: React.FC = () => {
               </label>
               <select
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value as OrderStatus)}
+                onChange={(e) => setSelectedStatus(e.target.value as OrderStatusType)}
                 className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 {ORDER_STATUSES.map((status) => (
