@@ -36,6 +36,7 @@ namespace PlantCare.Application.Services
                 return false;
 
             string token = Guid.NewGuid().ToString("N");
+            _logger.LogInformation("🔑 RegisterAsync: Generated token for {Email}: {Token}", model.Email, token);
 
             var user = new User
             {
@@ -48,12 +49,15 @@ namespace PlantCare.Application.Services
                 IsActive = false,
                 IsEmailVerified = false,
                 EmailVerificationToken = token,
-                EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(30),
+                EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24),
                 CreatedAt = DateTime.UtcNow
             };
 
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("💾 RegisterAsync: Saved user {UserId} with token {Token}", user.UserId, token);
+
             await SendVerificationEmail(user.FullName, user.Email, token);
 
             return true;
@@ -80,28 +84,75 @@ namespace PlantCare.Application.Services
 
         public async Task<(bool Success, string Message)> VerifyEmailAsync(string token)
         {
-            if (string.IsNullOrWhiteSpace(token))
-                return (false, "Token không hợp lệ.");
+            try
+            {
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    _logger.LogWarning("VerifyEmail: Token is null or empty");
+                    return (false, "Token không hợp lệ.");
+                }
 
-            var decoded = Uri.UnescapeDataString(token).Trim();
+                // Decode token từ URL
+                var decoded = Uri.UnescapeDataString(token).Trim();
+                _logger.LogInformation("VerifyEmail: Attempting to verify with token: {Token}", decoded);
 
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.EmailVerificationToken == decoded);
+                // Tìm user theo token
+                var user = await _context.Users
+                    .FirstOrDefaultAsync(u => u.EmailVerificationToken == decoded);
 
-            if (user == null)
-                return (false, "Token không tồn tại hoặc đã được sử dụng.");
+                if (user == null)
+                {
+                    _logger.LogWarning("VerifyEmail: User not found with token: {Token}", decoded);
 
-            if (user.EmailVerificationTokenExpiry == null || user.EmailVerificationTokenExpiry < DateTime.UtcNow)
-                return (false, "TOKEN_EXPIRED");
+                    // Kiểm tra xem có user nào đã verified với email này chưa
+                    // (Trường hợp user đã verify rồi nhưng click link lần 2)
+                    var verifiedUser = await _context.Users
+                        .FirstOrDefaultAsync(u => u.IsEmailVerified == true &&
+                                                   u.EmailVerificationToken == null);
 
-            user.IsEmailVerified = true;
-            user.IsActive = true;
-            user.EmailVerificationToken = null;
-            user.EmailVerificationTokenExpiry = null;
-            user.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+                    if (verifiedUser != null)
+                    {
+                        _logger.LogInformation("VerifyEmail: User already verified");
+                        return (true, "Email đã được xác minh trước đó. Bạn có thể đăng nhập.");
+                    }
 
-            return (true, "Xác minh email thành công.");
+                    return (false, "Token không tồn tại hoặc đã được sử dụng.");
+                }
+
+                // Kiểm tra user đã verify chưa
+                if (user.IsEmailVerified == true)
+                {
+                    _logger.LogInformation("VerifyEmail: User {Email} already verified", user.Email);
+                    return (true, "Email đã được xác minh trước đó. Bạn có thể đăng nhập.");
+                }
+
+                _logger.LogInformation("VerifyEmail: Found user {Email}, checking expiry", user.Email);
+
+                // Kiểm tra token đã hết hạn chưa
+                if (user.EmailVerificationTokenExpiry == null || user.EmailVerificationTokenExpiry < DateTime.UtcNow)
+                {
+                    _logger.LogWarning("VerifyEmail: Token expired for user {Email}. Expiry: {Expiry}, Now: {Now}",
+                        user.Email, user.EmailVerificationTokenExpiry, DateTime.UtcNow);
+                    return (false, "TOKEN_EXPIRED");
+                }
+
+                // Cập nhật trạng thái user
+                user.IsEmailVerified = true;
+                user.IsActive = true;
+                user.EmailVerificationToken = null;
+                user.EmailVerificationTokenExpiry = null;
+                user.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation("VerifyEmail: Successfully verified email for user {Email}", user.Email);
+                return (true, "Xác minh email thành công.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "VerifyEmail: Error occurred during email verification");
+                return (false, "Có lỗi xảy ra khi xác minh email.");
+            }
         }
 
         public async Task<(bool Success, string Message)> ResendVerifyEmailAsync(string email)
@@ -114,12 +165,18 @@ namespace PlantCare.Application.Services
                 return (true, "Email đã được xác minh.");
 
             string token = Guid.NewGuid().ToString("N");
+            _logger.LogInformation("🔑 ResendVerifyEmailAsync: Generated new token for {Email}: {Token}", email, token);
+
             user.EmailVerificationToken = token;
-            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddMinutes(30);
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
             user.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+
+            _logger.LogInformation("💾 ResendVerifyEmailAsync: Updated user {UserId} with new token {Token}", user.UserId, token);
+
             await SendVerificationEmail(user.FullName, user.Email, token);
 
+            _logger.LogInformation("ResendVerifyEmail: Sent new verification email to {Email}", email);
             return (true, "Đã gửi lại email xác minh!");
         }
 
@@ -203,16 +260,21 @@ namespace PlantCare.Application.Services
         private async Task SendVerificationEmail(string fullName, string email, string token)
         {
             string verifyUrl = $"{_config["AppSettings:ClientUrl"]}/verify-email?token={Uri.EscapeDataString(token)}";
+
+            _logger.LogInformation("📧 Sending verification email to {Email}", email);
+            _logger.LogInformation("🔑 Token: {Token}", token);
+            _logger.LogInformation("🔗 URL: {Url}", verifyUrl);
+
             string html = $@"
 <h2>Xác minh tài khoản PlantCare 🌿</h2>
 <p>Xin chào <b>{fullName}</b>,</p>
 <p>Nhấn vào nút bên dưới để xác minh tài khoản:</p>
-<p><a href='{verifyUrl}'>XÁC MINH TÀI KHOẢN</a></p>";
+<p><a href='{verifyUrl}'>XÁC MINH TÀI KHOẢN</a></p>
+<p style='color: gray; font-size: 12px;'>Token: {token}</p>";
 
             await _emailService.SendEmailAsync(email, "Xác minh tài khoản - PlantCare", html);
         }
 
-        // ================= IMPLEMENTATION FIX =================
         public async Task<User?> GetUserByEmailAsync(string email)
             => await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
 
