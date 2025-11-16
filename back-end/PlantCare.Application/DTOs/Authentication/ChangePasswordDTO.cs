@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 
-namespace PlantCare.Application.DTOs.Authentication
+public class ChangePasswordDTO
 {
-    public class ChangePasswordDTO
-    {
-        public string CurrentPassword { get; set; } = string.Empty;
-        public string NewPassword { get; set; } = string.Empty;
-    }
+    [Required(ErrorMessage = "Mật khẩu hiện tại không được để trống")]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Mật khẩu mới không được để trống")]
+    [MinLength(6, ErrorMessage = "Mật khẩu mới phải có ít nhất 6 ký tự")]
+    public string NewPassword { get; set; } = string.Empty;
+
+    [Compare("NewPassword", ErrorMessage = "Xác nhận mật khẩu không khớp")]
+    public string? ConfirmNewPassword { get; set; }
 }
