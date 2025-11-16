@@ -1,12 +1,11 @@
-// src/types/userPlant.types.ts
 
 export interface UserPlantDTO {
   userPlantID: number;
   userID: number;
-  productId: number;        // ✅ đổi từ productID → productId
+  productID: number;        // ⭐ Đổi lại productId → productID
   productName: string;
   nickname?: string;
-  plantedDate?: string;
+  plantedDate?: string;     // DateOnly từ C# → string "YYYY-MM-DD"
   lastWatered?: string;
   lastFertilized?: string;
   notes?: string;
@@ -15,7 +14,7 @@ export interface UserPlantDTO {
   difficulty?: string;
   lightRequirement?: string;
   waterRequirement?: string;
-  createdAt: string;
+  createdAt: string;        // DateTime từ C# → ISO string
 }
 
 export interface UserPlantDetailDTO {
@@ -34,7 +33,7 @@ export interface UserPlantDetailDTO {
 }
 
 export interface ProductInfoDTO {
-  productId: number;       // ✅ đổi
+  productID: number;        // ⭐ Đổi lại
   productName: string;
   description?: string;
   imageUrl?: string;
@@ -52,22 +51,6 @@ export interface ReminderDTO {
   isCompleted: boolean;
 }
 
-export interface CreateUserPlantDTO {
-  productId: number;       // ✅ đổi
-  nickname?: string;
-  plantedDate?: string;
-  notes?: string;
-}
-
-export interface UpdateUserPlantDTO {
-  userPlantID: number;
-  nickname?: string;
-  lastWatered?: string;
-  lastFertilized?: string;
-  notes?: string;
-  status?: string;
-}
-
 export interface UserPlantStatisticsDTO {
   totalPlants: number;
   alivePlants: number;
@@ -76,8 +59,38 @@ export interface UserPlantStatisticsDTO {
   plantsNeedFertilizing: number;
 }
 
+// ⭐ WRITE DTOs (gửi lên API) - PHẢI DÙNG PascalCase
+export interface CreateUserPlantDTO {
+  productID: number;        // ⭐ Backend expects ProductID (PascalCase)
+  nickname?: string;
+  plantedDate?: string | null;  // "YYYY-MM-DD" hoặc null
+  notes?: string;
+}
+
+export interface UpdateUserPlantDTO {
+  userPlantID: number;
+  nickname?: string;
+  plantedDate?: string;     // ⭐ Thêm field này (thiếu trong code cũ)
+  lastWatered?: string;
+  lastFertilized?: string;
+  notes?: string;
+  status?: string;
+}
+
+export interface UpdateCareDTO {
+  date: string;             // ISO DateTime string
+}
+
+export interface UpdateStatusDTO {
+  status: string;           // "Đang sống" | "Chết" | "Đã tặng" | "Đã bán"
+}
+
+// ============================================
+// Care Suggestion & Guide DTOs
+// ============================================
+
 export interface PlantCareGuideDTO {
-  productId: number;       // ✅ đổi
+  productID: number;        // ⭐ Đổi lại
   productName: string;
   generalCare?: string;
   wateringGuide: WateringGuideDTO;
@@ -128,7 +141,7 @@ export interface CareSuggestionDTO {
 }
 
 export interface ProductSuggestionDTO {
-  productId: number;       // ✅ đổi
+  productID: number;        // ⭐ Đổi lại
   productName: string;
   description?: string;
   price: number;
@@ -137,3 +150,4 @@ export interface ProductSuggestionDTO {
   lightRequirement?: string;
   waterRequirement?: string;
 }
+

@@ -1,5 +1,4 @@
-﻿// Path: PlantCare.API/Controllers/UserPlantController.cs
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PlantCare.Application.DTOs.UserPlant;
 using PlantCare.Application.Interfaces;
@@ -9,36 +8,33 @@ namespace PlantCare.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize] // 👉 Nên bật lại khi có middleware authorization
+    [Authorize]
     public class UserPlantController : ControllerBase
     {
         private readonly IUserPlantService _userPlantService;
+        private readonly IProductDAService _productService;
 
-        public UserPlantController(IUserPlantService userPlantService)
+        public UserPlantController(
+            IUserPlantService userPlantService,
+            IProductDAService productService)
         {
             _userPlantService = userPlantService;
+            _productService = productService;
         }
 
-        /// <summary>
-        /// Lấy UserId từ Claims (token)
-        /// </summary>
-        //private int GetUserId()
-        //{
-        //    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        //    if (string.IsNullOrEmpty(userIdClaim))
-        //        throw new UnauthorizedAccessException("Người dùng chưa đăng nhập hoặc token không hợp lệ.");
-
-        //    return int.Parse(userIdClaim);
-        //}
         private int GetUserId()
         {
-            return 1; // gán tạm userId=1 để test
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim))
+                throw new UnauthorizedAccessException("Token không hợp lệ hoặc đã hết hạn.");
+            if (!int.TryParse(userIdClaim, out int userId))
+                throw new UnauthorizedAccessException("UserId trong token không hợp lệ.");
+            return userId;
         }
 
-        /// <summary>
-        /// Lấy danh sách cây của user
-        /// </summary>
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetUserPlants()
         {
             try
@@ -53,14 +49,14 @@ namespace PlantCare.API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Lỗi server: " + ex.Message });
             }
         }
 
-        /// <summary>
-        /// Lấy chi tiết một cây
-        /// </summary>
         [HttpGet("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> GetUserPlantDetail(int id)
         {
             try
@@ -69,7 +65,7 @@ namespace PlantCare.API.Controllers
                 var plant = await _userPlantService.GetUserPlantDetailAsync(id, userId);
 
                 if (plant == null)
-                    return NotFound(new { success = false, message = "Không tìm thấy cây." });
+                    return NotFound(new { success = false, message = "Không tìm thấy cây hoặc không có quyền truy cập." });
 
                 return Ok(new { success = true, data = plant });
             }
@@ -79,27 +75,48 @@ namespace PlantCare.API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Lỗi server: " + ex.Message });
             }
         }
 
         /// <summary>
-        /// Thêm cây mới vào danh sách
+        /// POST api/userplant - Thêm cây mới (⭐ FIX: Dùng đúng property names)
         /// </summary>
         [HttpPost]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> AddUserPlant([FromBody] CreateUserPlantDTO dto)
         {
             try
             {
                 if (!ModelState.IsValid)
-                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ." });
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
 
                 var userId = GetUserId();
                 var plant = await _userPlantService.AddUserPlantAsync(userId, dto);
 
-                return CreatedAtAction(nameof(GetUserPlantDetail),
+                // ⭐ Lấy thông tin Product
+                var product = await _productService.GetByIdAsync(dto.ProductID);
+
+                // ⭐ FIX: Dùng đúng tên property từ UserPlantDTO
+                var response = new
+                {
+                    userPlantID = plant.UserPlantID,
+                    productID = plant.ProductID,
+                    productName = product?.ProductName ?? "Không rõ tên", // ⭐ Tên cây
+                    nickname = plant.Nickname,
+                    plantedDate = plant.PlantedDate,
+                    notes = plant.Notes,
+                    status = plant.Status,
+                    lastWatered = plant.LastWatered,        // ⭐ FIX: LastWatered không phải LastWateredDate
+                    lastFertilized = plant.LastFertilized   // ⭐ FIX: LastFertilized không phải LastFertilizedDate
+                };
+
+                return CreatedAtAction(
+                    nameof(GetUserPlantDetail),
                     new { id = plant.UserPlantID },
-                    new { success = true, data = plant, message = "Thêm cây thành công." });
+                    new { success = true, data = response, message = "Thêm cây thành công." }
+                );
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -111,14 +128,16 @@ namespace PlantCare.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Cập nhật thông tin cây
-        /// </summary>
         [HttpPut]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateUserPlant([FromBody] UpdateUserPlantDTO dto)
         {
             try
             {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
+
                 var userId = GetUserId();
                 var result = await _userPlantService.UpdateUserPlantAsync(userId, dto);
 
@@ -137,10 +156,9 @@ namespace PlantCare.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Xóa cây khỏi danh sách
-        /// </summary>
         [HttpDelete("{id}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteUserPlant(int id)
         {
             try
@@ -159,18 +177,20 @@ namespace PlantCare.API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Lỗi server: " + ex.Message });
             }
         }
 
-        /// <summary>
-        /// Cập nhật lần tưới nước
-        /// </summary>
         [HttpPost("{id}/water")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateWatering(int id, [FromBody] UpdateCareDTO dto)
         {
             try
             {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
+
                 var userId = GetUserId();
                 var result = await _userPlantService.UpdateWateringAsync(id, userId, dto.Date);
 
@@ -185,14 +205,16 @@ namespace PlantCare.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Cập nhật lần bón phân
-        /// </summary>
         [HttpPost("{id}/fertilize")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdateFertilizing(int id, [FromBody] UpdateCareDTO dto)
         {
             try
             {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
+
                 var userId = GetUserId();
                 var result = await _userPlantService.UpdateFertilizingAsync(id, userId, dto.Date);
 
@@ -207,14 +229,16 @@ namespace PlantCare.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Cập nhật trạng thái cây (Đang sống, Chết, Đã tặng/bán)
-        /// </summary>
         [HttpPut("{id}/status")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> UpdatePlantStatus(int id, [FromBody] UpdateStatusDTO dto)
         {
             try
             {
+                if (!ModelState.IsValid)
+                    return BadRequest(new { success = false, message = "Dữ liệu không hợp lệ.", errors = ModelState });
+
                 var userId = GetUserId();
                 var result = await _userPlantService.UpdatePlantStatusAsync(id, userId, dto.Status);
 
@@ -229,10 +253,8 @@ namespace PlantCare.API.Controllers
             }
         }
 
-        /// <summary>
-        /// Lọc cây theo trạng thái
-        /// </summary>
         [HttpGet("status/{status}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetPlantsByStatus(string status)
         {
             try
@@ -243,32 +265,31 @@ namespace PlantCare.API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Lỗi server: " + ex.Message });
             }
         }
 
-        /// <summary>
-        /// Tìm kiếm cây theo tên
-        /// </summary>
         [HttpGet("search")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> SearchUserPlants([FromQuery] string term)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(term))
+                    return BadRequest(new { success = false, message = "Từ khóa tìm kiếm không được để trống." });
+
                 var userId = GetUserId();
                 var plants = await _userPlantService.SearchUserPlantsAsync(userId, term);
                 return Ok(new { success = true, data = plants });
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Lỗi server: " + ex.Message });
             }
         }
 
-        /// <summary>
-        /// Thống kê cây của user
-        /// </summary>
         [HttpGet("statistics")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> GetStatistics()
         {
             try
@@ -279,7 +300,7 @@ namespace PlantCare.API.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { success = false, message = ex.Message });
+                return StatusCode(500, new { success = false, message = "Lỗi server: " + ex.Message });
             }
         }
     }

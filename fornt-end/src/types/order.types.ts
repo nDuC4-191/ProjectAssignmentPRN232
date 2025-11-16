@@ -1,8 +1,15 @@
 // src/types/order.types.ts
 
-// === DTO dùng cho phía Store (Cảnh / User) ===
+// === RESPONSE WRAPPER (Backend luôn trả về) ===
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+}
 
-// Địa chỉ giao hàng (checkout form)
+// === USER SIDE (Store / Customer) ===
+
+/** Địa chỉ giao hàng */
 export interface ShippingAddress {
   fullName: string;
   phoneNumber: string;
@@ -11,14 +18,14 @@ export interface ShippingAddress {
   country: string;
 }
 
-// Tạo đơn hàng (gửi từ FE lên API)
+/** Gửi lên khi đặt hàng */
 export interface CreateOrderDTO {
   shippingAddress: ShippingAddress;
-  paymentMethod: string; // "COD", "VNPAY", "MOMO"
+  paymentMethod: 'COD' | 'VNPAY' | 'MOMO';
   notes?: string;
 }
 
-// Sản phẩm trong đơn hàng
+/** Sản phẩm trong đơn */
 export interface OrderItem {
   productId: number;
   productName: string;
@@ -26,24 +33,32 @@ export interface OrderItem {
   quantity: number;
 }
 
-// Chi tiết đơn hàng (FE dùng để hiển thị)
+/** Chi tiết đơn hàng (dùng cho OrderSuccessPage) */
 export interface Order {
   orderId: number;
-  orderDate: string; // (là CreatedAt)
+  orderDate: string;
   status?: string;
   totalAmount: number;
-  shippingAddress: ShippingAddress; // Backend DTO trả về
+  shippingAddress: ShippingAddress;
   orderItems: OrderItem[];
 }
 
-// Theo dõi trạng thái đơn hàng
+/** Trạng thái đơn hàng (dùng cho theo dõi) */
 export interface OrderStatus {
   orderId: number;
   currentStatus?: string;
   lastUpdate: string;
 }
 
-// === DTO dùng cho phía Admin (Nhật Lê) ===
+/** Tóm tắt đơn hàng (dùng cho OrdersPage - /history) */
+export interface OrderSummaryDTO {
+  orderId: number;
+  orderDate: string;
+  status?: string;
+  totalAmount: number;
+}
+
+// === ADMIN SIDE ===
 
 export interface OrderListDTO {
   orderId: number;
@@ -99,20 +114,20 @@ export interface OrderStatisticsDTO {
   cancelledOrders: number;
 }
 
-// Enum trạng thái đơn hàng
+// === ENUM TRẠNG THÁI ===
 export type OrderStatusType =
-  | "Pending"
-  | "Processing"
-  | "Shipping"
-  | "Delivered"
-  | "Completed"
-  | "Cancelled";
+  | 'Pending'
+  | 'Processing'
+  | 'Shipping'
+  | 'Delivered'
+  | 'Completed'
+  | 'Cancelled';
 
 export const ORDER_STATUSES: OrderStatusType[] = [
-  "Pending",
-  "Processing",
-  "Shipping",
-  "Delivered",
-  "Completed",
-  "Cancelled"
+  'Pending',
+  'Processing',
+  'Shipping',
+  'Delivered',
+  'Completed',
+  'Cancelled',
 ];

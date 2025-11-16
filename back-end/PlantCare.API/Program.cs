@@ -8,14 +8,20 @@ using PlantCare.Application.Interfaces.Repository;
 using PlantCare.Application.Services;
 using PlantCare.Infrastructure.Models;
 using System.Text;
+using Newtonsoft.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Controllers + JSON
 builder.Services.AddControllers()
     .AddNewtonsoftJson(options =>
-        options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore
-    );
+    {
+        options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+
+        // ⭐ THÊM DÒNG NÀY
+        options.SerializerSettings.ContractResolver =
+            new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
+    });
 
 builder.Services.AddEndpointsApiExplorer();
 

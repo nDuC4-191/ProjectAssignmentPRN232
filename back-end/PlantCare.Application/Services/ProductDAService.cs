@@ -8,8 +8,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using PlantCare.Application.DTOs.ProductDADTO; 
-using PlantCare.Application.DTOs.Common;  
 
 namespace PlantCare.Application.Services
 {
@@ -32,11 +30,12 @@ namespace PlantCare.Application.Services
                     ProductName = p.ProductName,
                     Description = p.Description,
                     Price = p.Price,
-                    Stock = p.Stock ?? 0, // Handle nullable int
+                    Stock = p.Stock ?? 0,
                     Difficulty = p.Difficulty,
                     LightRequirement = p.LightRequirement,
                     WaterRequirement = p.WaterRequirement,
-                    SoilType = p.SoilType
+                    SoilType = p.SoilType,
+                    ImageUrl = p.ImageUrl  // ⭐ THÊM DÒNG NÀY
                 })
                 .ToListAsync();
         }
@@ -57,7 +56,8 @@ namespace PlantCare.Application.Services
                 Difficulty = p.Difficulty,
                 LightRequirement = p.LightRequirement,
                 WaterRequirement = p.WaterRequirement,
-                SoilType = p.SoilType
+                SoilType = p.SoilType,
+                ImageUrl = p.ImageUrl  // ⭐ THÊM DÒNG NÀY
             };
         }
 
@@ -74,6 +74,7 @@ namespace PlantCare.Application.Services
                 LightRequirement = dto.LightRequirement,
                 WaterRequirement = dto.WaterRequirement,
                 SoilType = dto.SoilType,
+                ImageUrl = dto.ImageUrl,  // ⭐ THÊM DÒNG NÀY
                 CreatedAt = DateTime.UtcNow
             };
             _context.Products.Add(product);
@@ -95,6 +96,7 @@ namespace PlantCare.Application.Services
             product.LightRequirement = dto.LightRequirement;
             product.WaterRequirement = dto.WaterRequirement;
             product.SoilType = dto.SoilType;
+            product.ImageUrl = dto.ImageUrl;  // ⭐ THÊM DÒNG NÀY
             product.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -113,23 +115,22 @@ namespace PlantCare.Application.Services
 
         public async Task<PagedResult<ProductDADto>> GetProductsAsync(ProductQueryParameters query)
         {
-            // Bắt đầu query từ DbSet
             var queryable = _context.Products
-                .Where(p => (p.Stock ?? 0) > 0); // Chỉ lấy sản phẩm còn hàng
+                .Where(p => (p.Stock ?? 0) > 0);
 
-            // fiter theo Search (Tên)
+            // Filter theo Search
             if (!string.IsNullOrEmpty(query.Search))
             {
                 queryable = queryable.Where(p => p.ProductName.Contains(query.Search));
             }
 
-            // fiter theo Category
+            // Filter theo Category
             if (query.CategoryId.HasValue)
             {
                 queryable = queryable.Where(p => p.CategoryId == query.CategoryId.Value);
             }
 
-            // fiter theo Giá
+            // Filter theo Giá
             if (query.MinPrice.HasValue)
             {
                 queryable = queryable.Where(p => p.Price >= query.MinPrice.Value);
@@ -139,32 +140,30 @@ namespace PlantCare.Application.Services
                 queryable = queryable.Where(p => p.Price <= query.MaxPrice.Value);
             }
 
-            // fiter theo Độ khó
+            // Filter theo Độ khó
             if (!string.IsNullOrEmpty(query.Difficulty))
             {
                 queryable = queryable.Where(p => p.Difficulty == query.Difficulty);
             }
 
-            // fiter theo Ánh sáng
+            // Filter theo Ánh sáng
             if (!string.IsNullOrEmpty(query.LightRequirement))
             {
                 queryable = queryable.Where(p => p.LightRequirement == query.LightRequirement);
             }
 
-            // fiter theo Nước
+            // Filter theo Nước
             if (!string.IsNullOrEmpty(query.WaterRequirement))
             {
                 queryable = queryable.Where(p => p.WaterRequirement == query.WaterRequirement);
             }
 
-            // Lấy tổng số lượng (trước khi phân trang)
             var totalCount = await queryable.CountAsync();
 
-            // Phân trang
             var items = await queryable
                 .Skip((query.PageNumber - 1) * query.PageSize)
                 .Take(query.PageSize)
-                .Select(p => new ProductDADto // Map sang DTO
+                .Select(p => new ProductDADto
                 {
                     ProductID = p.ProductId,
                     CategoryID = p.CategoryId,
@@ -175,7 +174,8 @@ namespace PlantCare.Application.Services
                     Difficulty = p.Difficulty,
                     LightRequirement = p.LightRequirement,
                     WaterRequirement = p.WaterRequirement,
-                    SoilType = p.SoilType
+                    SoilType = p.SoilType,
+                    ImageUrl = p.ImageUrl  // ⭐ THÊM DÒNG NÀY
                 })
                 .ToListAsync();
 

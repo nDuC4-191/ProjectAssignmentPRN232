@@ -30,168 +30,297 @@ namespace PlantCare.API.Controllers
             return BadRequest(new { success = false, errors });
         }
 
+        // ===================== REGISTER =====================
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDTO model)
         {
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse();
+            try
+            {
+                if (!ModelState.IsValid)
+                    return ValidationErrorResponse();
 
-            var result = await _authService.RegisterAsync(model);
+                var result = await _authService.RegisterAsync(model);
 
-            return result
-                ? Ok(new { success = true, message = "Đăng ký thành công! Vui lòng kiểm tra email để xác minh tài khoản." })
-                : BadRequest(new { success = false, message = "Email đã được sử dụng." });
+                return result
+                    ? Ok(new { success = true, message = "Đăng ký thành công! Vui lòng kiểm tra email để xác minh tài khoản." })
+                    : BadRequest(new { success = false, message = "Email đã được sử dụng." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Register error for email: {Email}", model.Email);
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi đăng ký." });
+            }
         }
 
-        // HỖ TRỢ CẢ GET VÀ POST
+        // ===================== VERIFY EMAIL =====================
         [HttpGet("verify-email")]
         public async Task<IActionResult> VerifyEmailGet([FromQuery] string token)
         {
-            _logger.LogInformation("VerifyEmailGet called with token from query: {Token}", token);
+            _logger.LogInformation("VerifyEmailGet called");
             return await ProcessVerifyEmail(token);
         }
 
         [HttpPost("verify-email")]
         public async Task<IActionResult> VerifyEmailPost([FromBody] VerifyEmailDTO dto)
         {
-            _logger.LogInformation("VerifyEmailPost called with token from body: {Token}", dto?.Token);
+            _logger.LogInformation("VerifyEmailPost called");
             return await ProcessVerifyEmail(dto?.Token);
         }
 
         private async Task<IActionResult> ProcessVerifyEmail(string? token)
         {
-            if (string.IsNullOrEmpty(token))
+            try
             {
-                _logger.LogWarning("VerifyEmail: Token is null or empty");
-                return BadRequest(new { success = false, message = "Thiếu token xác minh." });
-            }
-
-            _logger.LogInformation("Processing verify email with token: {Token}", token);
-
-            var result = await _authService.VerifyEmailAsync(token);
-
-            if (!result.Success)
-            {
-                _logger.LogWarning("VerifyEmail failed: {Message}", result.Message);
-
-                // Xử lý trường hợp token hết hạn
-                if (result.Message == "TOKEN_EXPIRED")
+                if (string.IsNullOrEmpty(token))
                 {
-                    return BadRequest(new
-                    {
-                        success = false,
-                        message = "Token đã hết hạn. Vui lòng yêu cầu gửi lại email xác minh.",
-                        code = "TOKEN_EXPIRED"
-                    });
+                    _logger.LogWarning("VerifyEmail: Token is missing");
+                    return BadRequest(new { success = false, message = "Thiếu token xác minh." });
                 }
 
-                return BadRequest(new { success = false, message = result.Message });
-            }
+                var result = await _authService.VerifyEmailAsync(token);
 
-            _logger.LogInformation("VerifyEmail succeeded: {Message}", result.Message);
-            return Ok(new { success = true, message = result.Message });
+                if (!result.Success)
+                {
+                    _logger.LogWarning("VerifyEmail failed");
+
+                    if (result.Message == "TOKEN_EXPIRED")
+                    {
+                        return BadRequest(new
+                        {
+                            success = false,
+                            message = "Token đã hết hạn. Vui lòng yêu cầu gửi lại email xác minh.",
+                            code = "TOKEN_EXPIRED"
+                        });
+                    }
+
+                    return BadRequest(new { success = false, message = result.Message });
+                }
+
+                _logger.LogInformation("VerifyEmail succeeded");
+                return Ok(new { success = true, message = result.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "VerifyEmail error");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi xác minh email." });
+            }
         }
 
         [HttpPost("resend-verify")]
         public async Task<IActionResult> ResendVerify([FromBody] ResendVerifyEmailDTO dto)
         {
-            if (string.IsNullOrEmpty(dto.Email))
-                return BadRequest(new { success = false, message = "Email không được để trống." });
+            try
+            {
+                if (string.IsNullOrEmpty(dto.Email))
+                    return BadRequest(new { success = false, message = "Email không được để trống." });
 
-            _logger.LogInformation("ResendVerify called for email: {Email}", dto.Email);
-            var result = await _authService.ResendVerifyEmailAsync(dto.Email);
+                _logger.LogInformation("ResendVerify called");
+                var result = await _authService.ResendVerifyEmailAsync(dto.Email);
 
-            return result.Success
-                ? Ok(new { success = true, message = result.Message })
-                : BadRequest(new { success = false, message = result.Message });
+                return result.Success
+                    ? Ok(new { success = true, message = result.Message })
+                    : BadRequest(new { success = false, message = result.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ResendVerify error for email: {Email}", dto.Email);
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi gửi lại email." });
+            }
         }
 
+        // ===================== LOGIN =====================
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDTO model)
         {
-            if (!ModelState.IsValid)
-                return ValidationErrorResponse();
-
-            var result = await _authService.LoginAsync(model);
-
-            if (!result.Success)
+            try
             {
-                if (result.Message == "EMAIL_NOT_VERIFIED")
-                    return Unauthorized(new { success = false, message = "Email chưa xác minh. Vui lòng kiểm tra hộp thư!" });
+                if (!ModelState.IsValid)
+                    return ValidationErrorResponse();
 
-                return Unauthorized(new { success = false, message = result.Message });
+                var result = await _authService.LoginAsync(model);
+
+                if (!result.Success)
+                {
+                    if (result.Message == "EMAIL_NOT_VERIFIED")
+                        return Unauthorized(new { success = false, message = "Email chưa xác minh. Vui lòng kiểm tra hộp thư!", code = "EMAIL_NOT_VERIFIED" });
+
+                    return Unauthorized(new { success = false, message = result.Message });
+                }
+
+                var user = await _authService.GetUserByEmailAsync(model.Email);
+
+                // ✅ CHỈ TRẢ VỀ THÔNG TIN CẦN THIẾT
+                return Ok(new
+                {
+                    success = true,
+                    message = result.Message,
+                    token = result.Token,
+                    user = new
+                    {
+                        userId = user.UserId,
+                        email = user.Email,
+                        fullName = user.FullName,
+                        role = user.Role,
+                        avatarUrl = user.AvatarUrl
+                    }
+                });
             }
-
-            return Ok(new { success = true, message = result.Message, token = result.Token });
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Login error for email: {Email}", model.Email);
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi đăng nhập." });
+            }
         }
 
+        // ===================== FORGOT PASSWORD =====================
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDTO dto)
         {
-            if (string.IsNullOrEmpty(dto.Email))
-                return BadRequest(new { success = false, message = "Email không được để trống." });
+            try
+            {
+                if (string.IsNullOrEmpty(dto.Email))
+                    return BadRequest(new { success = false, message = "Email không được để trống." });
 
-            var exists = await _authService.ForgotPasswordAsync(dto.Email);
+                await _authService.ForgotPasswordAsync(dto.Email);
 
-            return exists
-                ? Ok(new { success = true, message = "Đã gửi email khôi phục mật khẩu!" })
-                : NotFound(new { success = false, message = "Không tìm thấy email." });
+                // ✅ LUÔN TRẢ VỀ SUCCESS ĐỂ TRÁNH EMAIL ENUMERATION
+                return Ok(new { success = true, message = "Nếu email tồn tại, bạn sẽ nhận được email khôi phục mật khẩu." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ForgotPassword error");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra. Vui lòng thử lại sau." });
+            }
         }
 
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO dto)
         {
-            if (string.IsNullOrEmpty(dto.Token) || string.IsNullOrEmpty(dto.NewPassword))
-                return BadRequest(new { success = false, message = "Token hoặc mật khẩu không hợp lệ." });
+            try
+            {
+                if (string.IsNullOrEmpty(dto.Token) || string.IsNullOrEmpty(dto.NewPassword))
+                    return BadRequest(new { success = false, message = "Token hoặc mật khẩu không hợp lệ." });
 
-            if (dto.NewPassword.Length < 6)
-                return BadRequest(new { success = false, message = "Mật khẩu phải ít nhất 6 ký tự." });
+                if (dto.NewPassword.Length < 6)
+                    return BadRequest(new { success = false, message = "Mật khẩu phải ít nhất 6 ký tự." });
 
-            var result = await _authService.ResetPasswordAsync(dto.Token, dto.NewPassword);
+                var result = await _authService.ResetPasswordAsync(dto.Token, dto.NewPassword);
 
-            return result
-                ? Ok(new { success = true, message = "Đặt lại mật khẩu thành công!" })
-                : BadRequest(new { success = false, message = "Token không hợp lệ hoặc đã hết hạn." });
+                return result
+                    ? Ok(new { success = true, message = "Đặt lại mật khẩu thành công!" })
+                    : BadRequest(new { success = false, message = "Token không hợp lệ hoặc đã hết hạn." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ResetPassword error");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi đặt lại mật khẩu." });
+            }
         }
 
+        // ===================== CHANGE PASSWORD =====================
         [Authorize]
         [HttpPut("change-password")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO dto)
         {
-            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdClaim))
-                return Unauthorized(new { success = false, message = "Không tìm thấy user trong token!" });
+            try
+            {
+                // ModelState đã validate hết rồi
+                if (!ModelState.IsValid)
+                    return ValidationErrorResponse();
 
-            int userId = int.Parse(userIdClaim);
+                // Chỉ cần check logic
+                if (dto.CurrentPassword == dto.NewPassword)
+                    return BadRequest(new { success = false, message = "Mật khẩu mới phải khác mật khẩu cũ." });
 
-            var result = await _authService.ChangePasswordAsync(userId, dto);
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized(new { success = false, message = "Không tìm thấy user trong token!" });
 
-            return result
-                ? Ok(new { success = true, message = "Đổi mật khẩu thành công!" })
-                : Unauthorized(new { success = false, message = "Mật khẩu hiện tại không đúng." });
+                int userId = int.Parse(userIdClaim);
+                var result = await _authService.ChangePasswordAsync(userId, dto);
+
+                return result
+                    ? Ok(new { success = true, message = "Đổi mật khẩu thành công!" })
+                    : Unauthorized(new { success = false, message = "Mật khẩu hiện tại không đúng." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "ChangePassword error");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra khi đổi mật khẩu." });
+            }
         }
 
+        // ===================== GET CURRENT USER =====================
+        [Authorize]
+        [HttpGet("me")]
+        public async Task<IActionResult> GetCurrentUser()
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdClaim))
+                    return Unauthorized(new { success = false, message = "Token không hợp lệ!" });
+
+                var emailClaim = User.FindFirst(ClaimTypes.Email)?.Value;
+                if (string.IsNullOrEmpty(emailClaim))
+                    return Unauthorized(new { success = false, message = "Không tìm thấy email trong token!" });
+
+                var user = await _authService.GetUserByEmailAsync(emailClaim);
+                if (user == null)
+                    return NotFound(new { success = false, message = "Không tìm thấy user!" });
+
+                return Ok(new
+                {
+                    success = true,
+                    user = new
+                    {
+                        userId = user.UserId,
+                        email = user.Email,
+                        fullName = user.FullName,
+                        phone = user.Phone,
+                        address = user.Address,
+                        avatarUrl = user.AvatarUrl,
+                        role = user.Role,
+                        isActive = user.IsActive,
+                        isEmailVerified = user.IsEmailVerified,
+                        createdAt = user.CreatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetCurrentUser error");
+                return StatusCode(500, new { success = false, message = "Có lỗi xảy ra!" });
+            }
+        }
+
+        // ===================== LOGOUT =====================
         [Authorize]
         [HttpPost("logout")]
         public IActionResult Logout()
         {
+            // Note: JWT là stateless, logout chỉ cần client xóa token
+            // Nếu cần blacklist token, implement ở đây
             return Ok(new { success = true, message = "Đăng xuất thành công!" });
         }
 
+        // ===================== DEBUG ENDPOINTS (Development only) =====================
+#if DEBUG
         [Authorize]
         [HttpGet("debug")]
         public IActionResult DebugUser()
         {
             return Ok(new
             {
-                Authenticated = User.Identity?.IsAuthenticated,
-                UserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                authenticated = User.Identity?.IsAuthenticated,
+                userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                email = User.FindFirst(ClaimTypes.Email)?.Value,
+                role = User.FindFirst(ClaimTypes.Role)?.Value
             });
         }
 
-        // ENDPOINT DEBUG ĐỂ KIỂM TRA TOKEN
         [HttpGet("check-token")]
-        public async Task<IActionResult> CheckToken([FromQuery] string token)
+        public IActionResult CheckToken([FromQuery] string token)
         {
             if (string.IsNullOrEmpty(token))
                 return BadRequest(new { message = "Token is required" });
@@ -199,7 +328,7 @@ namespace PlantCare.API.Controllers
             try
             {
                 var decoded = Uri.UnescapeDataString(token);
-                _logger.LogInformation("CheckToken - Original: {Original}, Decoded: {Decoded}", token, decoded);
+                _logger.LogInformation("CheckToken - Original length: {Length}", token.Length);
 
                 return Ok(new
                 {
@@ -210,16 +339,10 @@ namespace PlantCare.API.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "CheckToken error");
                 return BadRequest(new { error = ex.Message });
             }
         }
-
-    
-    [HttpPost("test-sql-update/{userId}")]
-        public async Task<IActionResult> TestSqlUpdate(int userId)
-        {
-            var result = await _authService.DirectSqlUpdateTestAsync(userId);
-            return Ok(result);
-        }
+#endif
     }
-    }
+}

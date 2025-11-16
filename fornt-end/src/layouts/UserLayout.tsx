@@ -6,7 +6,7 @@ import { useCart } from '../contexts/CartContext';
 
 const UserLayout: React.FC = () => {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
-  const { cartItemCount } = useCart();
+  const { cartCount } = useCart(); // ĐÃ SỬA: cartCount
   const location = useLocation();
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -47,7 +47,7 @@ const UserLayout: React.FC = () => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2">
-              <span className="text-3xl">🌱</span>
+              <span className="text-3xl">Plant</span>
               <span className="text-2xl font-bold text-green-600">PlantCare</span>
             </Link>
 
@@ -87,9 +87,9 @@ const UserLayout: React.FC = () => {
                     d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" 
                   />
                 </svg>
-                {cartItemCount > 0 && (
+                {cartCount > 0 && (
                   <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                    {cartItemCount}
+                    {cartCount}
                   </span>
                 )}
               </Link>
@@ -176,7 +176,16 @@ const UserLayout: React.FC = () => {
                           Đơn hàng của tôi
                         </Link>
 
-                        
+                        <Link
+                          to="/change-password"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                          </svg>
+                          Đổi mật khẩu
+                        </Link>
                       </div>
 
                       {/* Logout */}
@@ -227,7 +236,7 @@ const UserLayout: React.FC = () => {
             {/* About */}
             <div>
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <span className="text-2xl">🌱</span>
+                <span className="text-2xl">Plant</span>
                 PlantCare
               </h3>
               <p className="text-gray-400 text-sm">
@@ -261,15 +270,15 @@ const UserLayout: React.FC = () => {
             <div>
               <h4 className="font-semibold mb-4">Liên hệ</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>📧 support@plantcare.vn</li>
-                <li>📞 1900 xxxx</li>
-                <li>📍 Hà Nội, Việt Nam</li>
+                <li>support@plantcare.vn</li>
+                <li>1900 xxxx</li>
+                <li>Hà Nội, Việt Nam</li>
               </ul>
             </div>
           </div>
 
           <div className="border-t border-gray-700 mt-8 pt-6 text-center text-sm text-gray-400">
-            <p>© 2024 PlantCare - Chăm sóc cây trồng dễ dàng hơn 🌱</p>
+            <p>© 2025 PlantCare - Chăm sóc cây trồng dễ dàng hơn Plant</p>
           </div>
         </div>
       </footer>

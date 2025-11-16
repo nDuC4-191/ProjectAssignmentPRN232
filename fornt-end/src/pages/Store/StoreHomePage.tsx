@@ -1,23 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { productService } from '../../services/product.service';
-// Sửa import (dùng 'type')
-import type { Product, ProductQuery, Category } from '../../types/product.types';
+import type { Product, ProductQuery, Category, PagedResult } from '../../types/product.types';
 
 const StoreHomePage: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const [filters, setFilters] = useState<ProductQuery>({ pageNumber: 1, pageSize: 12 });
+    const [totalItems, setTotalItems] = useState(0);
+    const [totalPages, setTotalPages] = useState(0);
+    const [filters, setFilters] = useState<ProductQuery>({ 
+        pageNumber: 1, 
+        pageSize: 12,
+        search: '',
+        categoryId: undefined
+    });
+    const [loading, setLoading] = useState(true);
     
     // useEffect này sẽ tự động chạy lại BẤT CỨ KHI NÀO state 'filters' thay đổi
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                // Service đã trả về .data
-                const pagedData = await productService.getProducts(filters);
-                setProducts(pagedData.items);
-                // TODO: setTotalPages(pagedData.totalPages);
-            } catch (error) { console.error("Lỗi tải sản phẩm:", error); }
+                setLoading(true);
+                const pagedData: PagedResult<Product> = await productService.getProducts(filters);
+                setProducts(pagedData.items || []);
+                setTotalItems(pagedData.totalItems || 0);
+                setTotalPages(pagedData.totalPages || 0);
+            } catch (error) {
+                console.error("Lỗi tải sản phẩm:", error);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchProducts();
     }, [filters]); // Phụ thuộc vào 'filters'
@@ -27,7 +39,9 @@ const StoreHomePage: React.FC = () => {
             try {
                 const categoriesData = await productService.getCategories();
                 setCategories(categoriesData);
-            } catch (error) { console.error("Lỗi tải danh mục:", error); }
+            } catch (error) {
+                console.error("Lỗi tải danh mục:", error);
+            }
         };
         fetchCategories();
     }, []);
@@ -43,118 +57,198 @@ const StoreHomePage: React.FC = () => {
         setFilters(prev => ({ ...prev, categoryId, pageNumber: 1 }));
     };
 
-    // === HÀM HANDLER CHO CÁC FILTER CÒN LẠI ===
-
-    const handlePrice = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value;
-        let minPrice: number | undefined = undefined;
-        let maxPrice: number | undefined = undefined;
-
-        if (value) {
-            const parts = value.split('-');
-            minPrice = parts[0] ? parseInt(parts[0]) : undefined;
-            maxPrice = parts[1] ? parseInt(parts[1]) : undefined;
-        }
-        // Cập nhật state 'filters', sẽ tự động gọi lại API
-        setFilters(prev => ({ ...prev, minPrice, maxPrice, pageNumber: 1 }));
+    const handlePageChange = (page: number) => {
+        setFilters(prev => ({ ...prev, pageNumber: page }));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const handleDifficulty = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value || undefined; // Nếu là "" (chuỗi rỗng) thì thành undefined
-        setFilters(prev => ({ ...prev, difficulty: value, pageNumber: 1 }));
-    };
-    
-    const handleLight = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value || undefined;
-        setFilters(prev => ({ ...prev, lightRequirement: value, pageNumber: 1 }));
+    // Helper function để xử lý ảnh lỗi
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        e.currentTarget.src = 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=400';
     };
 
-    const handleWater = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value || undefined;
-        setFilters(prev => ({ ...prev, waterRequirement: value, pageNumber: 1 }));
+    // Helper function để lấy URL ảnh
+    const getImageUrl = (product: Product): string => {
+        return product.imageUrl || 'https://images.unsplash.com/photo-1485955900006-10f4d324d411?w=400';
     };
-    
-    // === KẾT THÚC PHẦN HANDLER ===
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold mb-4">Cửa Hàng Cây Cảnh</h1>
-            
-            {/* Lọc và Tìm kiếm (Đã thêm Tailwind 'flex-wrap') */}
-            <div className="flex flex-wrap gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+        <div className="container mx-auto px-4 py-8">
+            {/* Header */}
+            <div className="mb-8">
+                <h1 className="text-4xl font-bold text-gray-800 mb-2">🌿 Cửa Hàng Cây Cảnh</h1>
+                <p className="text-gray-600">
+                    Khám phá hơn <strong>{totalItems}</strong> loại cây cảnh chất lượng cao
+                </p>
+            </div>
+
+            {/* Lọc và Tìm kiếm */}
+            <div className="flex flex-col md:flex-row gap-4 mb-8 bg-white p-4 rounded-lg shadow-md">
                 <input 
                     type="text" 
-                    placeholder="Tìm theo tên..." 
+                    placeholder="🔍 Tìm kiếm cây cảnh..." 
+                    value={filters.search || ''}
                     onChange={handleSearch} 
-                    className="border p-2 rounded-md flex-grow min-w-[200px]" 
+                    className="border border-gray-300 p-3 rounded-lg flex-grow focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 />
-                <select onChange={handleCategory} className="border p-2 rounded-md">
-                    <option value="">Tất cả danh mục</option>
+                <select 
+                    value={filters.categoryId || ''}
+                    onChange={handleCategory} 
+                    className="border border-gray-300 p-3 rounded-lg md:w-64 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                    <option value="">📂 Tất cả danh mục</option>
                     {categories.map(cat => (
-                        <option key={cat.categoryId} value={cat.categoryId}>{cat.categoryName}</option>
+                        <option key={cat.categoryId} value={cat.categoryId}>
+                            {cat.categoryName}
+                        </option>
                     ))}
                 </select>
-
-                {/* === CÁC Ô FILTER CÒN LẠI === */}
-
-                {/* Filter Giá */}
-                <select onChange={handlePrice} className="border p-2 rounded-md">
-                    <option value="">Tất cả mức giá</option>
-                    <option value="0-100000">Dưới 100.000 VND</option>
-                    <option value="100000-300000">100.000 - 300.000 VND</option>
-                    <option value="300000-99999999">Trên 300.000 VND</option>
-                </select>
-
-                {/* Filter Độ khó */}
-                <select onChange={handleDifficulty} className="border p-2 rounded-md">
-                    <option value="">Tất cả độ khó</option>
-                    <option value="Dễ">Dễ</option>
-                    <option value="Trung bình">Trung bình</option>
-                    <option value="Khó">Khó</option>
-                </select>
-
-                {/* Filter Ánh sáng */}
-                <select onChange={handleLight} className="border p-2 rounded-md">
-                    <option value="">Tất cả ánh sáng</option>
-                    <option value="Thấp">Thấp</option>
-                    <option value="Vừa">Vừa</option>
-                    <option value="Cao">Cao</option>
-                </select>
-
-                {/* Filter Nước */}
-                <select onChange={handleWater} className="border p-2 rounded-md">
-                    <option value="">Tất cả nhu cầu nước</option>
-                    <option value="Ít">Ít</option>
-                    <option value="Vừa">Vừa</option>
-                    <option value="Nhiều">Nhiều</option>
-                </select>
-
-                {/* === KẾT THÚC PHẦN FILTER === */}
             </div>
 
-            {/* Hiển thị sản phẩm */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {products.length > 0 ? (
-                    products.map(product => (
-                        <div key={product.productID} className="border rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-                            <Link to={`/products/${product.productID}`}>
-                                <img src={product.imageUrl || 'https://via.placeholder.com/300'} alt={product.productName} className="w-full h-48 object-cover" />
-                            </Link>
-                            <div className="p-4">
-                                <h3 className="text-lg font-semibold truncate">{product.productName}</h3>
-                                <p className="text-gray-700 mt-1">{product.price.toLocaleString()} VND</p>
-                                <Link to={`/products/${product.productID}`} className="text-green-600 hover:text-green-800 mt-2 inline-block text-sm font-medium">
-                                    Xem chi tiết
-                                </Link>
-                            </div>
+            {/* Loading State */}
+            {loading ? (
+                <div className="text-center py-16">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+                    <p className="mt-4 text-gray-600">Đang tải sản phẩm...</p>
+                </div>
+            ) : (
+                <>
+                    {/* Hiển thị sản phẩm */}
+                    {products.length === 0 ? (
+                        <div className="text-center py-16">
+                            <div className="text-6xl mb-4">🌱</div>
+                            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+                                Không tìm thấy sản phẩm
+                            </h3>
+                            <p className="text-gray-600">Thử điều chỉnh bộ lọc của bạn</p>
                         </div>
-                    ))
-                ) : (
-                    <p className="col-span-full text-center text-gray-500">Không tìm thấy sản phẩm nào phù hợp.</p>
-                )}
-            </div>
-            {/* TODO: Thêm Paging (Phân trang) */}
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {products.map(product => (
+                                    <div 
+                                        key={product.productID} 
+                                        className="bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300"
+                                    >
+                                        <Link to={`/products/${product.productID}`}>
+                                            <div className="relative h-56 bg-gray-100 overflow-hidden">
+                                                <img 
+                                                    src={getImageUrl(product)}
+                                                    alt={product.productName} 
+                                                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
+                                                    onError={handleImageError}
+                                                    loading="lazy"
+                                                />
+                                                {/* Stock badge */}
+                                                {product.stock === 0 && (
+                                                    <div className="absolute top-3 right-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                                                        Hết hàng
+                                                    </div>
+                                                )}
+                                                {product.stock > 0 && product.stock <= 5 && (
+                                                    <div className="absolute top-3 right-3 bg-orange-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                                                        Chỉ còn {product.stock}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </Link>
+                                        
+                                        <div className="p-4">
+                                            <Link to={`/products/${product.productID}`}>
+                                                <h3 className="text-lg font-semibold text-gray-800 mb-2 hover:text-green-600 transition-colors line-clamp-2">
+                                                    {product.productName}
+                                                </h3>
+                                            </Link>
+                                            
+                                            {/* Product info */}
+                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                {product.difficulty && (
+                                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                                        {product.difficulty}
+                                                    </span>
+                                                )}
+                                                {product.waterRequirement && (
+                                                    <span className="text-xs bg-cyan-100 text-cyan-800 px-2 py-1 rounded">
+                                                        💧 {product.waterRequirement}
+                                                    </span>
+                                                )}
+                                                {product.lightRequirement && (
+                                                    <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                                                        ☀️ {product.lightRequirement}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Price */}
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-xl font-bold text-green-600">
+                                                    {product.price.toLocaleString('vi-VN')}₫
+                                                </p>
+                                                <Link 
+                                                    to={`/products/${product.productID}`} 
+                                                    className="text-sm bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors"
+                                                >
+                                                    Chi tiết
+                                                </Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex justify-center items-center gap-2 mt-12">
+                                    <button
+                                        onClick={() => handlePageChange(filters.pageNumber - 1)}
+                                        disabled={filters.pageNumber === 1}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                    >
+                                        ← Trước
+                                    </button>
+
+                                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                        let pageNum;
+                                        if (totalPages <= 5) {
+                                            pageNum = i + 1;
+                                        } else if (filters.pageNumber <= 3) {
+                                            pageNum = i + 1;
+                                        } else if (filters.pageNumber >= totalPages - 2) {
+                                            pageNum = totalPages - 4 + i;
+                                        } else {
+                                            pageNum = filters.pageNumber - 2 + i;
+                                        }
+                                        
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                onClick={() => handlePageChange(pageNum)}
+                                                className={`px-4 py-2 rounded-lg font-medium transition ${
+                                                    pageNum === filters.pageNumber
+                                                        ? 'bg-green-600 text-white shadow-md'
+                                                        : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                                                }`}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    })}
+
+                                    <button
+                                        onClick={() => handlePageChange(filters.pageNumber + 1)}
+                                        disabled={filters.pageNumber === totalPages}
+                                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                                    >
+                                        Sau →
+                                    </button>
+                                </div>
+                            )}
+                        </>
+                    )}
+                </>
+            )}
         </div>
     );
 };
+
 export default StoreHomePage;
