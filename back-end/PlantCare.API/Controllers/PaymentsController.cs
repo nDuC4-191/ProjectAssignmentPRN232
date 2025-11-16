@@ -105,7 +105,8 @@ namespace PlantCare.API.Controllers
             catch (Exception ex)
             {
                 // Lỗi không xác định
-                return Ok(new { RspCode = "99", Message = $"An error occurred: {ex.Message}" });
+                Console.WriteLine($"[VNPAY IPN ERROR]: {ex.ToString()}");
+                return Ok(new { RspCode = "99", Message = $"Error: {ex.Message}" });
             }
         }
     }

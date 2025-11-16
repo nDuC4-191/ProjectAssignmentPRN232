@@ -41,7 +41,7 @@ namespace PlantCare.Application.Services
 
             // Mã đơn hàng duy nhất
             vnpay.AddRequestData("vnp_TxnRef", orderDto.OrderId.ToString());
-            vnpay.AddRequestData("vnp_OrderInfo", $"Thanh toan don hang #{orderDto.OrderId}");
+            vnpay.AddRequestData("vnp_OrderInfo", $"Thanh toan don hang {orderDto.OrderId}");
             vnpay.AddRequestData("vnp_OrderType", "other"); // Loại hàng hóa
             vnpay.AddRequestData("vnp_Locale", "vn"); // Ngôn ngữ
             vnpay.AddRequestData("vnp_ReturnUrl", vnp_ReturnUrl);
@@ -50,9 +50,9 @@ namespace PlantCare.Application.Services
 
             // Lấy địa chỉ IP của khách hàng
             var ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
-            if (string.IsNullOrEmpty(ipAddress) || ipAddress == "::1")
+            if (string.IsNullOrEmpty(ipAddress) || ipAddress == "::1" || ipAddress == "127.0.0.1")
             {
-                ipAddress = "127.0.0.1"; // IP dự phòng cho localhost
+                ipAddress = "8.8.8.8"; // Dùng IP của Google DNS để test
             }
             vnpay.AddRequestData("vnp_IpAddr", ipAddress);
 

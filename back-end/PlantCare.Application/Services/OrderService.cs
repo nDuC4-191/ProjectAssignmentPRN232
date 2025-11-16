@@ -224,9 +224,9 @@ namespace PlantCare.Application.Services
             {
                 OrderId = order.OrderId,
                 UserId = order.UserId,
-                UserName = order.User.FullName ?? "N/A",
-                UserEmail = order.User.Email,
-                UserPhone = order.User.Phone,
+                UserName = order.User?.FullName ?? "N/A",
+                UserEmail = order.User?.Email,
+                UserPhone = order.User?.Phone,
                 Address = order.Address,
                 PaymentMethod = order.PaymentMethod,
                 TotalAmount = order.TotalAmount,
