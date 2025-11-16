@@ -88,6 +88,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
+builder.Services.AddScoped<IVNPayService, VNPayService>();
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddScoped<IUserPlantService, UserPlantService>();
 builder.Services.AddScoped<ICareSuggestionService, CareSuggestionService>();
 builder.Services.AddScoped<IPlantCareTipService, PlantCareTipService>();
@@ -128,13 +130,21 @@ builder.Services.AddAuthentication(options =>
 // CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials()
-              .SetIsOriginAllowed(origin => true);
-    });
+    options.AddPolicy("AllowAll",
+        builder =>
+        {
+            builder.WithOrigins(
+                "http://localhost:5173", // URL của React (Client)
+                "https://sandbox.vnpayment.vn", // URL của VNPay Sandbox
+
+                // === THÊM DÒNG NÀY ===
+                "https://*.ngrok-free.dev"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials() 
+            .SetIsOriginAllowed(origin => true);
+        });
 });
 
 var app = builder.Build();

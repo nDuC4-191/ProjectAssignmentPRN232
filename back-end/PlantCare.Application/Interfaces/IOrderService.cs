@@ -17,5 +17,12 @@ namespace PlantCare.Application.Interfaces
         Task<OrderDetailDto?> GetByIdAsync(int orderId);
         Task<bool> UpdateStatusAsync(int orderId, UpdateOrderStatusDto dto);
         Task<OrderStatisticsDto> GetStatisticsAsync();
+
+        //PaymentController gọi khi VNPAY báo
+        //thanh toán thành công
+        Task ConfirmOrderPaymentAsync(int orderId);
+
+        //thanh toán thất bại
+        Task CancelOrderAsync(int orderId);
     }
 }

@@ -48,6 +48,7 @@ namespace PlantCare.Application.Services
                         UserId = userId,
                         CreatedAt = DateTime.UtcNow,
                         Status = "Processing",
+                        //Status = "Pending",
                         PaymentMethod = dto.PaymentMethod,
                         TotalAmount = cart.GrandTotal,
                         Address = shippingAddressString
@@ -275,6 +276,46 @@ namespace PlantCare.Application.Services
             };
         }
 
-       
+        public async Task ConfirmOrderPaymentAsync(int orderId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order != null && order.Status == "Processing") // Chỉ cập nhật nếu đang "Processing"
+            {
+                order.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        public async Task CancelOrderAsync(int orderId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+
+            // Chỉ hủy nếu đơn hàng đang "Processing"
+            if (order != null && (order.Status == "Processing"))
+            {
+                order.Status = "Cancelled"; // Đánh dấu là đã hủy
+                order.UpdatedAt = DateTime.UtcNow;
+
+                // Hoàn trả lại số lượng 
+                // 1. Tìm tất cả chi tiết đơn hàng
+                var orderDetails = await _context.OrderDetails
+                    .Where(od => od.OrderId == orderId)
+                    .ToListAsync();
+
+                foreach (var detail in orderDetails)
+                {
+                    // 2. Tìm sản phẩm tương ứng
+                    var product = await _context.Products.FindAsync(detail.ProductId);
+                    if (product != null)
+                    {
+                        // 3. Cộng (hoàn) trả tồn kho
+                        // (Dùng ?? 0 để tránh lỗi nếu Stock là null)
+                        product.Stock = (product.Stock ?? 0) + (detail.Quantity ?? 0);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

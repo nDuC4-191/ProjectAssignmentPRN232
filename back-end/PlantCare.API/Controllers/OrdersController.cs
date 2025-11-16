@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using PlantCare.Application.DTOs.Order;
 using PlantCare.Application.Interfaces;
+using PlantCare.Application.Services;
 using System.Security.Claims;
+using PlantCare.Infrastructure.Models;
 
 namespace PlantCare.API.Controllers
 {
@@ -13,10 +15,12 @@ namespace PlantCare.API.Controllers
     public class OrdersController : BaseController
     {
         private readonly IOrderService _orderService;
+        private readonly IVNPayService _vnPayService;
 
-        public OrdersController(IOrderService orderService)
+        public OrdersController(IOrderService orderService, IVNPayService vnPayService)
         {
             _orderService = orderService;
+            _vnPayService = vnPayService;
         }
 
         private int GetCurrentUserId()
@@ -33,7 +37,23 @@ namespace PlantCare.API.Controllers
             {
                 var userId = GetCurrentUserId();
                 var order = await _orderService.CreateOrderAsync(userId, dto);
-                return Ok(new { success = true, data = order, message = "Đặt hàng thành công" });
+                if (dto.PaymentMethod.Equals("COD", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 1. THANH TOÁN COD
+                    // (Không cần làm gì thêm, đơn hàng đã tạo)
+                    return Ok(new { success = true, data = order, message = "Đặt hàng COD thành công" });
+                }
+                else if (dto.PaymentMethod.Equals("VNPAY", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 2. THANH TOÁN VNPAY
+                    // Tạo URL thanh toán từ đơn hàng vừa tạo
+                    var paymentUrl = _vnPayService.CreatePaymentUrl(order);
+
+                    // Trả URL này về cho React
+                    return Ok(new { success = true, paymentUrl = paymentUrl });
+                }
+
+                return BadRequest(new { success = false, message = "Phương thức thanh toán không hợp lệ" });
             }
             catch (InvalidOperationException ex)
             {
