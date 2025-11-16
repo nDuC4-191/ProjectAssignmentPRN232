@@ -1,32 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
+using Newtonsoft.Json;
 
-namespace PlantCare.Application.DTOs.ProductDADTO
+namespace PlantCare.Application.DTOs.ProductDADTO;
+
+/// <summary>
+/// Tham số lọc sản phẩm
+/// </summary>
+public class ProductQueryParameters
 {
-    public class ProductQueryParameters
-    {
-        // Task: Tìm kiếm sản phẩm theo tên
-        public string? Search { get; set; }
+    [JsonProperty("search")]
+    public string? Search { get; set; }
 
-        // Task: Lọc sản phẩm theo Loại cây (Category)
-        public int? CategoryId { get; set; }
+    [JsonProperty("categoryId")]
+    public int? CategoryId { get; set; }
 
-        // Task: Lọc sản phẩm theo Mức giá
-        public decimal? MinPrice { get; set; }
-        public decimal? MaxPrice { get; set; }
+    [Range(0, double.MaxValue, ErrorMessage = "Giá phải ≥ 0")]
+    [JsonProperty("minPrice")]
+    public decimal? MinPrice { get; set; }
 
-        // Task: Lọc sản phẩm theo Độ khó
-        public string? Difficulty { get; set; } // "Dễ", "Trung bình", "Khó"
+    [Range(0, double.MaxValue, ErrorMessage = "Giá phải ≥ 0")]
+    [JsonProperty("maxPrice")]
+    public decimal? MaxPrice { get; set; }
 
-        // Task: Lọc sản phẩm theo Nhu cầu ánh sáng / nước
-        public string? LightRequirement { get; set; } // "Thấp", "Vừa", "Cao"
-        public string? WaterRequirement { get; set; } // "Ít", "Vừa", "Nhiều"
+    [JsonProperty("difficulty")]
+    public string? Difficulty { get; set; }
 
-        // Paging (Phân trang - Rất nên có)
-        public int PageNumber { get; set; } = 1;
-        public int PageSize { get; set; } = 10;
-    }
+    [JsonProperty("lightRequirement")]
+    public string? LightRequirement { get; set; }
+
+    [JsonProperty("waterRequirement")]
+    public string? WaterRequirement { get; set; }
+
+    // Phân trang (nếu cần)
+    [JsonProperty("pageNumber")]
+    public int? PageNumber { get; set; }
+
+    [JsonProperty("pageSize")]
+    public int? PageSize { get; set; }
 }
