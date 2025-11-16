@@ -13,6 +13,7 @@ import UserLayout from './layouts/UserLayout';
 import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
 import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/Auth/ResetPasswordPage";
 import VerifyEmailPage from "./pages/Auth/VerifyEmailPage";
 import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
 
@@ -52,8 +53,11 @@ const ProtectedRoute: React.FC<{
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-600 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Đang tải...</p>
+        </div>
       </div>
     );
   }
@@ -84,6 +88,9 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      {/* Support both URL param and query string */}
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       {/* ========== ADMIN ROUTES (AdminLayout) ========== */}
@@ -119,7 +126,6 @@ function App() {
           </ProtectedRoute>
         } />
 
-        {/* ========== CHANGE PASSWORD ROUTE ========== */}
         <Route path="change-password" element={
           <ProtectedRoute requiredRole="customer">
             <ChangePasswordPage />
@@ -156,16 +162,19 @@ function App() {
             <MyPlantsPage />
           </ProtectedRoute>
         } />
+        
         <Route path="my-plants/add" element={
           <ProtectedRoute requiredRole="customer">
             <AddPlantPage />
           </ProtectedRoute>
         } />
+        
         <Route path="my-plants/:id" element={
           <ProtectedRoute requiredRole="customer">
             <PlantDetailPage />
           </ProtectedRoute>
         } />
+        
         <Route path="recommendations" element={
           <ProtectedRoute requiredRole="customer">
             <PlantRecommendationPage />
@@ -175,9 +184,17 @@ function App() {
         {/* === 404 trong UserLayout === */}
         <Route path="*" element={
           <div className="container mx-auto px-4 py-16 text-center">
-            <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
-            <p className="text-gray-600 mb-6">Trang không tồn tại</p>
-            <a href="/" className="text-green-600 hover:underline">Quay về trang chủ</a>
+            <div className="max-w-md mx-auto">
+              <div className="text-8xl mb-6">🌿</div>
+              <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
+              <p className="text-xl text-gray-600 mb-8">Trang không tồn tại</p>
+              <a 
+                href="/" 
+                className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                🏠 Quay về trang chủ
+              </a>
+            </div>
           </div>
         } />
       </Route>

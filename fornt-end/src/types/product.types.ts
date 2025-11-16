@@ -1,22 +1,20 @@
 // src/types/product.types.ts
 // ============================================
-// PRODUCT & RELATED TYPES
+// PRODUCT & RELATED TYPES – KHỚP VỚI BACKEND
 // ============================================
 
-// === PAGED RESULT (dùng cho danh sách phân trang) ===
+// === PAGED RESULT ===
 export interface PagedResult<T> {
   items: T[];
-  pageNumber: number;
-  pageSize: number;
   totalCount: number;
   totalPages: number;
-  totalItems: number; // ← Đảm bảo có để tránh lỗi TypeScript
 }
 
-// === PRODUCT (từ backend - PascalCase) ===
+// === PRODUCT (KHỚP BACKEND - camelCase) ===
 export interface Product {
-  productID: number;
-  categoryID: number;
+  productId: number;        // ← CHỮ THƯỜNG 'd' (backend trả: productId)
+  categoryID: number;       // Backend trả: categoryID
+  categoryName?: string;    // Backend có trả trong JOIN
   productName: string;
   description?: string;
   price: number;
@@ -24,21 +22,22 @@ export interface Product {
   difficulty?: string;
   lightRequirement?: string;
   waterRequirement?: string;
+  soilType?: string;
   imageUrl?: string;
-  originalPrice?: number; // ← Dùng cho giảm giá (nếu có)
+  originalPrice?: number;
 }
 
-// === PRODUCT QUERY (lọc & tìm kiếm) ===
+// === PRODUCT QUERY ===
 export interface ProductQuery {
-  pageNumber: number;
-  pageSize: number;
-  search?: string;
-  categoryId?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  difficulty?: string;
-  lightRequirement?: string;
-  waterRequirement?: string;
+  pageNumber?: number;
+  pageSize?: number;
+  Search?: string;
+  CategoryId?: number;
+  MinPrice?: number;
+  MaxPrice?: number;
+  Difficulty?: string;
+  LightRequirement?: string;
+  WaterRequirement?: string;
 }
 
 // === CATEGORY ===
@@ -48,7 +47,7 @@ export interface Category {
   description?: string;
 }
 
-// === FEEDBACK (đánh giá sản phẩm) ===
+// === FEEDBACK ===
 export interface Feedback {
   feedbackId: number;
   userId: number;
@@ -59,40 +58,19 @@ export interface Feedback {
   createdAt?: string;
 }
 
-// ============================================
-// NEW TYPES FOR ADD PLANT & CART
-// ============================================
-
-// === PRODUCT WITH camelCase ID (dùng trong Cart, AddPlant) ===
-export interface ProductWithId extends Product {
-  productId: number; // ← camelCase để đồng bộ với CartItem
-}
-
-// === PRODUCT OPTION (dùng cho dropdown chọn cây) ===
-export interface ProductOption {
-  id: number;
-  name: string;
-  price: number;
-  imageUrl?: string;
-  description?: string;
-  difficulty?: string;
-  waterRequirement?: string;
-  lightRequirement?: string;
-}
-
-// === CART ITEM (dùng trong CartContext) ===
+// === CART ITEM ===
 export interface CartItem {
-  id: number; // temporary ID (frontend)
-  productId: number; // ← camelCase
+  id: number;
+  productId: number;
   productName: string;
-  productImage?: string; // ← camelCase
+  imageUrl?: string;
   price: number;
   quantity: number;
 }
 
-// === USER PLANT SUGGESTION (nếu dùng ở gợi ý cây) ===
+// === PRODUCT SUGGESTION ===
 export interface ProductSuggestionDTO {
-  productID: number;
+  productId: number;        // ← CHỮ THƯỜNG
   productName: string;
   price: number;
   imageUrl?: string;
@@ -102,6 +80,7 @@ export interface ProductSuggestionDTO {
   waterRequirement: string;
 }
 
+// === USER CONDITION ===
 export interface UserConditionDTO {
   lightAvailability: string;
   timeAvailable: string;
