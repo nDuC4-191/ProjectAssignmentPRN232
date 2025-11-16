@@ -4,26 +4,22 @@ using Newtonsoft.Json;
 namespace PlantCare.Application.DTOs.ProductDADTO;
 
 /// <summary>
-/// Trả về thông tin sản phẩm
+/// Dùng để tạo hoặc cập nhật sản phẩm
 /// </summary>
-public class ProductDADto
+public class CreateUpdateProductDADto
 {
-    [JsonProperty("productId")]
-    public int ProductId { get; set; }
-
-    [JsonProperty("categoryId")]  // ← FORCE: CategoryID → categoryId
+    [Required(ErrorMessage = "Danh mục là bắt buộc")]
+    [JsonProperty("categoryId")]  // ← Map: categoryId → CategoryID
     public int CategoryID { get; set; }
 
-    [JsonProperty("categoryName")]
-    public string? CategoryName { get; set; }
-
-    [Required]
+    [Required(ErrorMessage = "Tên sản phẩm là bắt buộc")]
     [JsonProperty("productName")]
     public string ProductName { get; set; } = null!;
 
     [JsonProperty("description")]
     public string? Description { get; set; }
 
+    [Range(0, 1_000_000_000, ErrorMessage = "Giá phải từ 0 đến 1 tỷ")]
     [JsonProperty("price")]
     public decimal Price { get; set; }
 
@@ -42,7 +38,7 @@ public class ProductDADto
     [JsonProperty("soilType")]
     public string? SoilType { get; set; }
 
-    [Url]
+    [Url(ErrorMessage = "Link ảnh không hợp lệ")]
     [JsonProperty("imageUrl")]
     public string? ImageUrl { get; set; }
 }

@@ -4,6 +4,7 @@ import api from "../../services/api.service";
 interface Product {
   productId: number;
   categoryID: number;
+  categoryName?: string; // ← THÊM
   productName: string;
   description: string;
   price: number;
@@ -12,6 +13,7 @@ interface Product {
   lightRequirement: string;
   waterRequirement: string;
   soilType: string;
+  imageUrl?: string; // ← THÊM
 }
 
 const AdminProductsPage: React.FC = () => {
@@ -20,6 +22,7 @@ const AdminProductsPage: React.FC = () => {
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // ← THÊM
 
   const [formData, setFormData] = useState({
     productName: "",
@@ -31,13 +34,14 @@ const AdminProductsPage: React.FC = () => {
     lightRequirement: "",
     waterRequirement: "",
     soilType: "",
+    imageUrl: "", // ← THÊM
   });
 
-  // 🔹 Lấy danh sách sản phẩm
+  // LẤY DANH SÁCH
   const fetchProducts = async () => {
     try {
       const res = await api.get("/admin/products");
-      setProducts(res.data);
+      setProducts(res.data.data); // ← SỬA: res.data.data
     } catch (err: any) {
       setError("Không thể tải danh sách sản phẩm.");
       console.error(err);
@@ -50,7 +54,7 @@ const AdminProductsPage: React.FC = () => {
     fetchProducts();
   }, []);
 
-  // 🔹 Xử lý thay đổi input
+  // XỬ LÝ INPUT
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => {
@@ -60,12 +64,15 @@ const AdminProductsPage: React.FC = () => {
     });
   };
 
-  // 🔹 Gửi form (thêm hoặc sửa)
+  // GỬI FORM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     try {
       const dataToSend = {
-        categoryID: parseInt(formData.categoryId),
+        categoryID: parseInt(formData.categoryId) || 1,
         productName: formData.productName,
         description: formData.description,
         price: parseFloat(formData.price),
@@ -74,27 +81,28 @@ const AdminProductsPage: React.FC = () => {
         lightRequirement: formData.lightRequirement || "Vừa",
         waterRequirement: formData.waterRequirement || "Vừa",
         soilType: formData.soilType || "Tơi xốp",
+        imageUrl: formData.imageUrl || "https://via.placeholder.com/400", // ← THÊM
       };
 
       if (editingId !== null) {
-        // 🔹 Cập nhật
         await api.put(`/admin/products/${editingId}`, dataToSend);
-        alert("✅ Cập nhật sản phẩm thành công!");
+        alert("Cập nhật thành công!");
       } else {
-        // 🔹 Thêm mới
         await api.post("/admin/products", dataToSend);
-        alert("✅ Thêm sản phẩm thành công!");
+        alert("Thêm thành công!");
       }
 
       resetForm();
       fetchProducts();
     } catch (err: any) {
       console.error(err);
-      alert("❌ Có lỗi xảy ra khi lưu sản phẩm!");
+      alert("Lỗi: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // 🔹 Reset form về mặc định
+  // RESET FORM
   const resetForm = () => {
     setFormData({
       productName: "",
@@ -106,25 +114,25 @@ const AdminProductsPage: React.FC = () => {
       lightRequirement: "",
       waterRequirement: "",
       soilType: "",
+      imageUrl: "",
     });
     setEditingId(null);
     setShowForm(false);
   };
 
-  // 🔹 Xóa sản phẩm
+  // XÓA
   const handleDelete = async (id: number) => {
-    if (!window.confirm("Bạn có chắc muốn xóa sản phẩm này?")) return;
+    if (!window.confirm("Xóa sản phẩm này?")) return;
     try {
-      await api.delete(`/admin/products/${id}`); // ✅ đảm bảo đúng URL
-      alert("🗑️ Xóa thành công!");
+      await api.delete(`/admin/products/${id}`);
+      alert("Xóa thành công!");
       setProducts(products.filter((p) => p.productId !== id));
     } catch (err: any) {
-      console.error(err);
-      alert("❌ Không thể xóa sản phẩm (kiểm tra log backend).");
+      alert("Lỗi xóa: " + (err.response?.data?.detail || err.message));
     }
   };
 
-  // 🔹 Sửa sản phẩm
+  // SỬA
   const handleEdit = (product: Product) => {
     setEditingId(product.productId);
     setFormData({
@@ -137,158 +145,85 @@ const AdminProductsPage: React.FC = () => {
       lightRequirement: product.lightRequirement || "",
       waterRequirement: product.waterRequirement || "",
       soilType: product.soilType || "",
+      imageUrl: product.imageUrl || "", // ← THÊM
     });
     setShowForm(true);
   };
 
-  // 🔹 Mở form thêm mới
   const handleAddNew = () => {
     resetForm();
     setShowForm(true);
   };
 
-  if (loading) return <p className="p-6">Đang tải dữ liệu...</p>;
+  if (loading) return <p className="p-6">Đang tải...</p>;
   if (error) return <p className="text-red-600 p-6">{error}</p>;
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold text-green-700 mb-6">Quản lý sản phẩm</h1>
+     <h1 className="text-3xl font-bold text-green-700 mb-6">Quản lý sản phẩm</h1>
 
-      {/* 🔹 Nút thêm mới */}
+      {/* NÚT THÊM MỚI */}
       <div className="mb-4">
         {!showForm && (
           <button
             onClick={handleAddNew}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
           >
-            ➕ Thêm sản phẩm
+            Thêm sản phẩm
           </button>
         )}
       </div>
 
-      {/* 🔹 Form thêm/sửa */}
+      {/* FORM */}
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white shadow-lg rounded-lg p-6 mb-8 max-w-xl"
-        >
+        <form onSubmit={handleSubmit} className="bg-white shadow-lg rounded-lg p-6 mb-8 max-w-xl">
           <h2 className="text-xl font-semibold mb-4">
-            {editingId !== null ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}
+            {editingId ? "Chỉnh sửa" : "Thêm mới"}
           </h2>
 
           <div className="grid gap-3">
-            <input
-              type="text"
-              name="productName"
-              placeholder="Tên sản phẩm"
-              value={formData.productName}
-              onChange={handleChange}
-              required
-              className="border p-2 rounded"
-            />
-            <textarea
-              name="description"
-              placeholder="Mô tả"
-              value={formData.description}
-              onChange={handleChange}
-              className="border p-2 rounded"
-            />
-            <input
-              type="number"
-              name="price"
-              placeholder="Giá"
-              value={formData.price}
-              onChange={handleChange}
-              required
-              className="border p-2 rounded"
-            />
-            <input
-              type="number"
-              name="stock"
-              placeholder="Số lượng tồn"
-              value={formData.stock}
-              onChange={handleChange}
-              required
-              className="border p-2 rounded"
-            />
-            <input
-              type="number"
-              name="categoryId"
-              placeholder="ID danh mục"
-              value={formData.categoryId}
-              onChange={handleChange}
-              required
-              className="border p-2 rounded"
-            />
+            <input name="productName" placeholder="Tên" value={formData.productName} onChange={handleChange} required className="border p-2 rounded" />
+            <textarea name="description" placeholder="Mô tả" value={formData.description} onChange={handleChange} className="border p-2 rounded" />
+            <input type="number" name="price" placeholder="Giá" value={formData.price} onChange={handleChange} required className="border p-2 rounded" />
+            <input type="number" name="stock" placeholder="Tồn kho" value={formData.stock} onChange={handleChange} required className="border p-2 rounded" />
+            <input type="number" name="categoryId" placeholder="ID danh mục" value={formData.categoryId} onChange={handleChange} required className="border p-2 rounded" />
+            
+            <input name="imageUrl" placeholder="Link ảnh (Unsplash...)" value={formData.imageUrl} onChange={handleChange} className="border p-2 rounded" /> {/* ← THÊM */}
 
-            <select
-              name="difficulty"
-              value={formData.difficulty}
-              onChange={handleChange}
-              className="border p-2 rounded"
-            >
+            <select name="difficulty" value={formData.difficulty} onChange={handleChange} className="border p-2 rounded">
               <option value="">Độ khó</option>
               <option value="Dễ">Dễ</option>
               <option value="Trung bình">Trung bình</option>
               <option value="Khó">Khó</option>
             </select>
 
-            <input
-              type="text"
-              name="lightRequirement"
-              placeholder="Ánh sáng (Cao, Trung bình...)"
-              value={formData.lightRequirement}
-              onChange={handleChange}
-              className="border p-2 rounded"
-            />
-
-            <input
-              type="text"
-              name="waterRequirement"
-              placeholder="Nước tưới (Nhiều, Trung bình...)"
-              value={formData.waterRequirement}
-              onChange={handleChange}
-              className="border p-2 rounded"
-            />
-
-            <input
-              type="text"
-              name="soilType"
-              placeholder="Loại đất (Tơi xốp...)"
-              value={formData.soilType}
-              onChange={handleChange}
-              className="border p-2 rounded"
-            />
+            <input name="lightRequirement" placeholder="Ánh sáng" value={formData.lightRequirement} onChange={handleChange} className="border p-2 rounded" />
+            <input name="waterRequirement" placeholder="Nước" value={formData.waterRequirement} onChange={handleChange} className="border p-2 rounded" />
+            <input name="soilType" placeholder="Đất" value={formData.soilType} onChange={handleChange} className="border p-2 rounded" />
           </div>
 
           <div className="mt-4 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={resetForm}
-              className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition"
-            >
+            <button type="button" onClick={resetForm} disabled={isSubmitting} className="bg-gray-400 text-white px-4 py-2 rounded-lg">
               Hủy
             </button>
-            <button
-              type="submit"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              {editingId !== null ? "Cập nhật" : "Thêm mới"}
+            <button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white px-4 py-2 rounded-lg">
+              {isSubmitting ? "Đang lưu..." : editingId ? "Cập nhật" : "Thêm"}
             </button>
           </div>
         </form>
       )}
 
-      {/* 🔹 Bảng danh sách sản phẩm */}
+      {/* BẢNG */}
       <div className="overflow-x-auto bg-white shadow-md rounded-lg">
-        <table className="min-w-full border border-gray-200">
+        <table className="min-w-full border">
           <thead className="bg-green-600 text-white">
             <tr>
               <th className="p-3 text-left">ID</th>
-              <th className="p-3 text-left">Tên sản phẩm</th>
+              <th className="p-3 text-left">Ảnh</th> {/* ← THÊM */}
+              <th className="p-3 text-left">Tên</th>
               <th className="p-3 text-left">Giá</th>
-              <th className="p-3 text-left">Tồn kho</th>
-              <th className="p-3 text-left">Độ khó</th>
+              <th className="p-3 text-left">Tồn</th>
+              <th className="p-3 text-left">Khó</th>
               <th className="p-3 text-left">Ánh sáng</th>
               <th className="p-3 text-left">Nước</th>
               <th className="p-3 text-left">Đất</th>
@@ -299,6 +234,13 @@ const AdminProductsPage: React.FC = () => {
             {products.map((p) => (
               <tr key={p.productId} className="border-t hover:bg-gray-50">
                 <td className="p-3">{p.productId}</td>
+                <td className="p-3">
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.productName} className="w-12 h-12 object-cover rounded" />
+                  ) : (
+                    <div className="bg-gray-200 border-2 border-dashed rounded w-12 h-12" />
+                  )}
+                </td>
                 <td className="p-3">{p.productName}</td>
                 <td className="p-3">{p.price.toLocaleString()} ₫</td>
                 <td className="p-3">{p.stock}</td>
@@ -307,16 +249,10 @@ const AdminProductsPage: React.FC = () => {
                 <td className="p-3">{p.waterRequirement}</td>
                 <td className="p-3">{p.soilType}</td>
                 <td className="p-3 flex gap-2">
-                  <button
-                    onClick={() => handleEdit(p)}
-                    className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 transition"
-                  >
+                  <button onClick={() => handleEdit(p)} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm">
                     Sửa
                   </button>
-                  <button
-                    onClick={() => handleDelete(p.productId)}
-                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-                  >
+                  <button onClick={() => handleDelete(p.productId)} className="bg-red-600 text-white px-3 py-1 rounded text-sm">
                     Xóa
                   </button>
                 </td>
@@ -324,7 +260,7 @@ const AdminProductsPage: React.FC = () => {
             ))}
             {products.length === 0 && (
               <tr>
-                <td colSpan={9} className="p-4 text-center text-gray-500">
+                <td colSpan={10} className="p-4 text-center text-gray-500">
                   Không có sản phẩm nào.
                 </td>
               </tr>

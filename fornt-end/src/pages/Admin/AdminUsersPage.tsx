@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import api from "../../services/api.service";
 
 interface User {
-  userId: number;
-  name: string;
+  userID: number; // ✅ Viết hoa ID
+  fullName: string; // ✅ fullName thay vì name
   email: string;
+  phone: string;
   role: string;
-  active: boolean;
+  isActive: boolean; // ✅ isActive thay vì active
+  createdAt: string;
 }
 
 const AdminUsersPage: React.FC = () => {
@@ -17,9 +19,17 @@ const AdminUsersPage: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const res = await api.get("/admin/users");
-      setUsers(res.data);
-    } catch {
+      // ✅ API trả về trực tiếp array, không có wrapper
+      if (Array.isArray(res.data)) {
+        setUsers(res.data);
+      } else {
+        console.warn("Unexpected response format:", res.data);
+        setUsers([]);
+      }
+    } catch (err) {
+      console.error("Fetch users error:", err);
       setError("Không thể tải danh sách người dùng.");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -31,10 +41,10 @@ const AdminUsersPage: React.FC = () => {
 
   const handleToggleActive = async (user: User) => {
     try {
-      await api.put(`/admin/users/${user.userId}/active?isActive=${!user.active}`);
+      await api.put(`/admin/users/${user.userID}/active?isActive=${!user.isActive}`);
       setUsers(
         users.map((u) =>
-          u.userId === user.userId ? { ...u, active: !u.active } : u
+          u.userID === user.userID ? { ...u, isActive: !u.isActive } : u
         )
       );
     } catch {
@@ -43,13 +53,19 @@ const AdminUsersPage: React.FC = () => {
   };
 
   const handleChangeRole = async (user: User) => {
-    const newRole = prompt("Nhập vai trò mới (USER / ADMIN):", user.role);
+    const newRole = prompt("Nhập vai trò mới (Customer / Admin):", user.role);
     if (!newRole) return;
+    
     try {
-      await api.put(`/admin/users/${user.userId}/role?role=${newRole}`);
-      setUsers(users.map((u) => (u.userId === user.userId ? { ...u, role: newRole } : u)));
+      // ✅ FIX: Gửi body JSON thay vì query string
+      await api.put(`/admin/users/${user.userID}/role`, {
+        role: newRole
+      });
+      
+      setUsers(users.map((u) => (u.userID === user.userID ? { ...u, role: newRole } : u)));
       alert("Cập nhật vai trò thành công!");
-    } catch {
+    } catch (error) {
+      console.error("Error updating role:", error);
       alert("Không thể cập nhật vai trò!");
     }
   };
@@ -74,13 +90,14 @@ const AdminUsersPage: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
-              <tr key={u.userId} className="border-t hover:bg-gray-50">
-                <td className="p-3">{u.userId}</td>
-                <td className="p-3">{u.name}</td>
+            {/* ✅ FIX: Thêm safety check */}
+            {Array.isArray(users) && users.map((u) => (
+              <tr key={u.userID} className="border-t hover:bg-gray-50">
+                <td className="p-3">{u.userID}</td>
+                <td className="p-3">{u.fullName}</td>
                 <td className="p-3">{u.email}</td>
                 <td className="p-3">{u.role}</td>
-                <td className="p-3">{u.active ? "✅ Hoạt động" : "❌ Vô hiệu"}</td>
+                <td className="p-3">{u.isActive ? "✅ Hoạt động" : "❌ Vô hiệu"}</td>
                 <td className="p-3 flex gap-2">
                   <button
                     onClick={() => handleChangeRole(u)}
@@ -91,10 +108,10 @@ const AdminUsersPage: React.FC = () => {
                   <button
                     onClick={() => handleToggleActive(u)}
                     className={`${
-                      u.active ? "bg-red-600" : "bg-green-600"
+                      u.isActive ? "bg-red-600" : "bg-green-600"
                     } text-white px-3 py-1 rounded hover:opacity-80 transition`}
                   >
-                    {u.active ? "Vô hiệu" : "Kích hoạt"}
+                    {u.isActive ? "Vô hiệu" : "Kích hoạt"}
                   </button>
                 </td>
               </tr>

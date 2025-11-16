@@ -22,9 +22,12 @@ const AdminCategoriesPage: React.FC = () => {
   const fetchCategories = async () => {
     try {
       const res = await api.get("/admin/categories");
-      setCategories(res.data);
+      // ✅ FIX: Lấy res.data.data thay vì res.data
+      setCategories(res.data.data || []);
     } catch (err) {
       setError("Không thể tải danh sách danh mục.");
+      // ✅ FIX: Set về array rỗng khi có lỗi
+      setCategories([]);
     } finally {
       setLoading(false);
     }
@@ -45,7 +48,14 @@ const AdminCategoriesPage: React.FC = () => {
     e.preventDefault();
     try {
       if (editingId) {
-        await api.put(`/admin/categories/${editingId}`, formData);
+        // ✅ FIX: Gửi đầy đủ payload cho PUT request
+        const payload = {
+          categoryId: editingId,
+          categoryName: formData.categoryName,
+          description: formData.description,
+          parentId: null
+        };
+        await api.put(`/admin/categories/${editingId}`, payload);
         alert("Cập nhật danh mục thành công!");
       } else {
         await api.post("/admin/categories", formData);
@@ -55,7 +65,8 @@ const AdminCategoriesPage: React.FC = () => {
       setEditingId(null);
       setShowForm(false);
       fetchCategories();
-    } catch {
+    } catch (error) {
+      console.error("Error saving category:", error);
       alert("Có lỗi xảy ra khi lưu danh mục!");
     }
   };
@@ -146,7 +157,8 @@ const AdminCategoriesPage: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {categories.map((c) => (
+            {/* ✅ FIX: Thêm safety check */}
+            {Array.isArray(categories) && categories.map((c) => (
               <tr key={c.categoryId} className="border-t hover:bg-gray-50">
                 <td className="p-3">{c.categoryId}</td>
                 <td className="p-3">{c.categoryName}</td>
