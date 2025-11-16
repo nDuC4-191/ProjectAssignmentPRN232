@@ -14,6 +14,7 @@ import LoginPage from "./pages/Auth/LoginPage";
 import RegisterPage from "./pages/Auth/RegisterPage";
 import ForgotPasswordPage from "./pages/Auth/ForgotPasswordPage";
 import VerifyEmailPage from "./pages/Auth/VerifyEmailPage";
+import ChangePasswordPage from './pages/Auth/ChangePasswordPage';
 
 // === User Pages (Store) ===
 import StoreHomePage from './pages/Store/StoreHomePage';
@@ -23,14 +24,15 @@ import CheckoutPage from './pages/Store/CheckoutPage';
 import OrderSuccessPage from './pages/Store/OrderSuccessPage';
 import CareWikiPage from './pages/Store/CareWikiPage';
 
-// === User Pages (My Plants) ===
+// === My Plants ===
 import MyPlantsPage from './pages/Store/MyPlantsPage';
 import PlantDetailPage from './pages/Store/PlantDetailPage';
 import AddPlantPage from './pages/Store/AddPlantPage';
 import PlantRecommendationPage from './pages/Store/PlantRecommendationPage';
 
-// === User Profile === ← THÊM IMPORT
+// === Profile & Orders ===
 import ProfilePage from './pages/ProfilePage';
+import OrdersPage from './pages/Store/OrdersPage';
 
 // === Admin Pages ===
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -41,27 +43,25 @@ import AdminOrdersPage from "./pages/Admin/AdminOrdersPage";
 import AdminOrderDetailPage from "./pages/Admin/AdminOrderDetailPage";
 
 // === Protected Route Component ===
-const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: 'admin' | 'customer' }> = ({ 
-  children, 
-  requiredRole 
-}) => {
+const ProtectedRoute: React.FC<{ 
+  children: React.ReactNode; 
+  requiredRole?: 'admin' | 'customer' 
+}> = ({ children, requiredRole }) => {
   const { isAuthenticated, user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    // Lưu URL hiện tại để redirect về sau khi login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Kiểm tra role
   const userRole = user?.role?.toLowerCase();
 
   if (requiredRole === 'admin' && userRole !== 'admin') {
@@ -75,9 +75,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?: 'admi
   return <>{children}</>;
 };
 
+// === Main App ===
 function App() {
   return (
     <Routes>
+
       {/* ========== AUTH ROUTES (No Layout) ========== */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -103,36 +105,52 @@ function App() {
       </Route>
 
       {/* ========== USER ROUTES (UserLayout) ========== */}
-      <Route path="/*" element={<UserLayout />}>
-        {/* Store - PUBLIC (không cần login) */}
+      <Route element={<UserLayout />}>
+        
+        {/* === PUBLIC PAGES === */}
         <Route index element={<StoreHomePage />} />
         <Route path="products/:id" element={<ProductDetailPageStore />} />
-        
-        {/* Profile - CẦN LOGIN ← THÊM ROUTE NÀY */}
+        <Route path="wiki" element={<CareWikiPage />} />
+
+        {/* === PROTECTED PAGES (Customer Only) === */}
         <Route path="profile" element={
           <ProtectedRoute requiredRole="customer">
             <ProfilePage />
           </ProtectedRoute>
         } />
 
-        {/* Cart & Checkout - CẦN LOGIN */}
+        {/* ========== CHANGE PASSWORD ROUTE ========== */}
+        <Route path="change-password" element={
+          <ProtectedRoute requiredRole="customer">
+            <ChangePasswordPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="orders" element={
+          <ProtectedRoute requiredRole="customer">
+            <OrdersPage />
+          </ProtectedRoute>
+        } />
+
         <Route path="cart" element={
           <ProtectedRoute requiredRole="customer">
             <CartPage />
           </ProtectedRoute>
         } />
+
         <Route path="checkout" element={
           <ProtectedRoute requiredRole="customer">
             <CheckoutPage />
           </ProtectedRoute>
         } />
+
         <Route path="order-success/:orderId" element={
           <ProtectedRoute requiredRole="customer">
             <OrderSuccessPage />
           </ProtectedRoute>
         } />
 
-        {/* My Plants - CẦN LOGIN */}
+        {/* === MY PLANTS === */}
         <Route path="my-plants" element={
           <ProtectedRoute requiredRole="customer">
             <MyPlantsPage />
@@ -148,23 +166,25 @@ function App() {
             <PlantDetailPage />
           </ProtectedRoute>
         } />
-        <Route path="wiki" element={<CareWikiPage />} />
         <Route path="recommendations" element={
           <ProtectedRoute requiredRole="customer">
             <PlantRecommendationPage />
           </ProtectedRoute>
         } />
+
+        {/* === 404 trong UserLayout === */}
+        <Route path="*" element={
+          <div className="container mx-auto px-4 py-16 text-center">
+            <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
+            <p className="text-gray-600 mb-6">Trang không tồn tại</p>
+            <a href="/" className="text-green-600 hover:underline">Quay về trang chủ</a>
+          </div>
+        } />
       </Route>
 
-      {/* ========== 404 FALLBACK ========== */}
-      <Route path="*" element={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-6xl font-bold text-gray-800 mb-4">404</h1>
-            <p className="text-gray-600">Trang không tồn tại</p>
-          </div>
-        </div>
-      } />
+      {/* ========== GLOBAL 404 (nếu ngoài UserLayout) ========== */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }

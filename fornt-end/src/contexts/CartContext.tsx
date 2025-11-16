@@ -3,137 +3,189 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useAuth } from './AuthContext';
 import { cartService } from '../services/cart.service';
 
-interface CartItem {
-  id: number;
-  plantId: number;
-  plantName: string;
-  plantImage?: string;
+// ============================================
+// CART ITEM TYPE (chuẩn backend + alias cũ)
+// ============================================
+export interface CartItem {
+  id: number;                    // Frontend temporary ID
+  productId: number;             // Backend field
+  productName: string;
+  imageUrl?: string;
   price: number;
   quantity: number;
+
+  // Alias để tương thích với code cũ (plantId, plantName, plantImage)
+  plantId?: number;
+  plantName?: string;
+  plantImage?: string;
 }
 
-interface CartContextType {
+// ============================================
+// CART CONTEXT TYPE
+// ============================================
+export interface CartContextType {
   cartItems: CartItem[];
-  cartCount: number;
-  addToCart: (item: CartItem) => Promise<void>;
+  cartCount: number;             // Tổng số lượng sản phẩm
+  addToCart: (item: Omit<CartItem, 'id'>) => Promise<void>;
   removeFromCart: (itemId: number) => Promise<void>;
   updateQuantity: (itemId: number, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
   refreshCart: () => Promise<void>;
 }
 
+// ============================================
+// CONTEXT
+// ============================================
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+// ============================================
+// PROVIDER
+// ============================================
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, token } = useAuth();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  // Load cart từ localStorage khi mount (offline mode)
+  // === LOAD CART FROM LOCALSTORAGE (offline mode) ===
   useEffect(() => {
     if (isAuthenticated) {
-      const localCart = localStorage.getItem('cart');
-      if (localCart) {
+      const saved = localStorage.getItem('cart');
+      if (saved) {
         try {
-          const parsed = JSON.parse(localCart);
-          setCartItems(Array.isArray(parsed) ? parsed : []);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setCartItems(parsed);
+          }
         } catch (e) {
-          setCartItems([]);
+          console.error('Failed to parse cart from localStorage:', e);
+          localStorage.removeItem('cart');
         }
       }
     } else {
       setCartItems([]);
+      localStorage.removeItem('cart');
     }
   }, [isAuthenticated]);
 
-  // Sync cartItems to localStorage
+  // === SYNC CART TO LOCALSTORAGE ===
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && cartItems.length > 0) {
       localStorage.setItem('cart', JSON.stringify(cartItems));
     }
   }, [cartItems, isAuthenticated]);
 
-  const addToCart = async (item: CartItem) => {
+  // === ADD TO CART ===
+  const addToCart = async (item: Omit<CartItem, 'id'>) => {
+    const productId = item.productId || (item as any).plantId;
+    if (!productId) {
+      alert('Lỗi: Thiếu ID sản phẩm!');
+      return;
+    }
+
     try {
-      // Thử gọi API trước
-      await cartService.addToCart(item.plantId, item.quantity);
+      await cartService.addToCart(productId, item.quantity);
       await refreshCart();
     } catch (error: any) {
-      // Fallback: Update local state
+      console.warn('API addToCart failed, using local fallback:', error);
       setCartItems(prev => {
-        const existingItem = prev.find(i => i.plantId === item.plantId);
-        if (existingItem) {
+        const existing = prev.find(i => i.productId === productId);
+        if (existing) {
           return prev.map(i =>
-            i.plantId === item.plantId
+            i.productId === productId
               ? { ...i, quantity: i.quantity + item.quantity }
               : i
           );
         }
-        return [...prev, item];
+        return [...prev, { ...item, id: Date.now(), productId }];
       });
     }
   };
 
+  // === REMOVE FROM CART ===
   const removeFromCart = async (itemId: number) => {
+    const item = cartItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const productId = item.productId;
+    if (!productId) {
+      alert('Lỗi: Không tìm thấy sản phẩm để xóa!');
+      return;
+    }
+
     try {
-      // ✅ Backend expects productId, not cartItemId
-      const item = cartItems.find(i => i.id === itemId);
-      if (item) {
-        await cartService.removeFromCart(item.plantId);
-        await refreshCart();
-      }
+      await cartService.removeFromCart(productId);
+      await refreshCart();
     } catch (error: any) {
-      // Fallback: Update local state
-      setCartItems(prev => prev.filter(item => item.id !== itemId));
+      console.warn('API removeFromCart failed, using local fallback:', error);
+      setCartItems(prev => prev.filter(i => i.id !== itemId));
     }
   };
 
+  // === UPDATE QUANTITY ===
   const updateQuantity = async (itemId: number, quantity: number) => {
     if (quantity <= 0) {
       await removeFromCart(itemId);
       return;
     }
 
+    const item = cartItems.find(i => i.id === itemId);
+    if (!item || !item.productId) return;
+
     try {
-      // ✅ Backend expects productId, not cartItemId
-      const item = cartItems.find(i => i.id === itemId);
-      if (item) {
-        await cartService.updateQuantity(item.plantId, quantity);
-        await refreshCart();
-      }
+      await cartService.updateQuantity(item.productId, quantity);
+      await refreshCart();
     } catch (error: any) {
-      // Fallback: Update local state
+      console.warn('API updateQuantity failed, using local fallback:', error);
       setCartItems(prev =>
-        prev.map(item =>
-          item.id === itemId ? { ...item, quantity } : item
-        )
+        prev.map(i => (i.id === itemId ? { ...i, quantity } : i))
       );
     }
   };
 
+  // === CLEAR CART ===
   const clearCart = async () => {
     try {
       await cartService.clearCart();
       setCartItems([]);
+      localStorage.removeItem('cart');
     } catch (error: any) {
-      // Fallback: Clear local state
+      console.warn('API clearCart failed, using local fallback:', error);
       setCartItems([]);
       localStorage.removeItem('cart');
     }
   };
 
+  // === REFRESH CART FROM API ===
   const refreshCart = useCallback(async () => {
     if (!isAuthenticated || !token) return;
 
     try {
-      const cartData = await cartService.getMyCart();
-      setCartItems(cartData || []);
+      const data = await cartService.getMyCart();
+      if (data?.items && Array.isArray(data.items)) {
+        const mapped: CartItem[] = data.items.map((item: any, idx: number) => ({
+          id: idx + 1,
+          productId: item.productId,
+          productName: item.productName,
+          imageUrl: item.imageUrl,
+          price: item.price,
+          quantity: item.quantity,
+          plantId: item.productId,
+          plantName: item.productName,
+          plantImage: item.imageUrl,
+        }));
+        setCartItems(mapped);
+      } else {
+        setCartItems([]);
+      }
     } catch (error: any) {
-      // Silent fail - không log gì
+      console.error('Failed to refresh cart:', error);
+      // Keep local cart
     }
   }, [isAuthenticated, token]);
 
+  // === CART COUNT ===
   const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
+  // === PROVIDE CONTEXT ===
   return (
     <CartContext.Provider
       value={{
@@ -151,10 +203,13 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useCart = () => {
+// ============================================
+// HOOK
+// ============================================
+export const useCart = (): CartContextType => {
   const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
+  if (!context) {
+    throw new Error('useCart must be used within CartProvider');
   }
   return context;
 };

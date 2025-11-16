@@ -1,23 +1,11 @@
 // src/services/auth.service.ts
-import api from './api.service'; // hoặc thử: import api from '@/services/api.service';
+import api from './api.service';
+import type { AxiosResponse } from 'axios';
 
 // ============================================================
-// INTERFACES
+// INTERFACES – ĐÃ EXPORT
 // ============================================================
-interface RegisterData {
-  fullName: string;
-  email: string;
-  password: string;
-  phone?: string;
-  address?: string;
-}
-
-interface LoginData {
-  email: string;
-  password: string;
-}
-
-interface User {
+export interface User {
   userId: number;
   email: string;
   fullName: string;
@@ -30,7 +18,39 @@ interface User {
   createdAt: string;
 }
 
-interface AuthResponse {
+export interface RegisterData {
+  fullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  address?: string;
+}
+
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export interface ChangePasswordData {
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword?: string;
+}
+
+export interface ForgotPasswordData {
+  email: string;
+}
+
+export interface ResetPasswordData {
+  token: string;
+  newPassword: string;
+}
+
+export interface VerifyEmailData {
+  token: string;
+}
+
+export interface AuthResponse {
   success: boolean;
   message: string;
   token?: string;
@@ -39,238 +59,269 @@ interface AuthResponse {
 }
 
 // ============================================================
-// AUTH SERVICE
+// AUTH SERVICE – SINGLETON CLASS
 // ============================================================
-export const authService = {
-  // Đăng ký
+class AuthService {
+  private static instance: AuthService;
+
+  private constructor() {
+    // Private để đảm bảo singleton
+  }
+
+  public static getInstance(): AuthService {
+    if (!AuthService.instance) {
+      AuthService.instance = new AuthService();
+    }
+    return AuthService.instance;
+  }
+
+  // ===================== ĐĂNG KÝ =====================
   async register(data: RegisterData): Promise<AuthResponse> {
     try {
-      const response = await api.post('/authentication/register', {
+      const response: AxiosResponse<AuthResponse> = await api.post('/authentication/register', {
         fullName: data.fullName,
         email: data.email,
         password: data.password,
-        phone: data.phone || '',
-        address: data.address || '',
+        phone: data.phone ?? '',
+        address: data.address ?? '',
       });
+
+      if (response.data.success) {
+        console.log('Register success');
+      }
+
       return response.data;
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại!';
       console.error('Register error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // Đăng nhập
+  // ===================== ĐĂNG NHẬP =====================
   async login(data: LoginData): Promise<AuthResponse> {
     try {
-      const response = await api.post('/authentication/login', data);
-      
+      const response: AxiosResponse<AuthResponse> = await api.post('/authentication/login', data);
+
       if (response.data.success && response.data.token) {
-        // ✅ Lưu token
-        localStorage.setItem('token', response.data.token);
-        
-        // ✅ Lưu thông tin user
+        this.setToken(response.data.token);
         if (response.data.user) {
-          localStorage.setItem('user', JSON.stringify(response.data.user));
+          this.setCurrentUser(response.data.user);
         }
+        console.log('Login success:', response.data.user?.email);
       }
-      
+
       return response.data;
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin!';
+      const errorMsg = error.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại!';
       console.error('Login error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // Quên mật khẩu - Gửi email
+  // ===================== QUÊN MẬT KHẨU =====================
   async forgotPassword(email: string): Promise<AuthResponse> {
     try {
-      console.log('📧 Sending forgot password request for:', email);
-      
-      const response = await api.post('/authentication/forgot-password', {
-        email,
-      });
-      
+      const response: AxiosResponse<AuthResponse> = await api.post('/authentication/forgot-password', { email });
+      console.log('Forgot password request sent');
       return response.data;
     } catch (error: any) {
-      console.error('❌ Forgot password error:', error);
-      
-      // ✅ Backend luôn trả 200 OK để tránh email enumeration
-      // Chỉ hiển thị lỗi chung nếu có lỗi thật sự (500, network, etc.)
-      const errorMsg = error.response?.data?.message || 'Gửi yêu cầu thất bại. Vui lòng thử lại!';
+      const errorMsg = error.response?.data?.message || 'Gửi yêu cầu thất bại!';
+      console.error('Forgot password error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // Reset mật khẩu với token
-  async resetPassword(token: string, password: string): Promise<AuthResponse> {
+  // ===================== RESET MẬT KHẨU =====================
+  async resetPassword(token: string, newPassword: string): Promise<AuthResponse> {
     try {
-      console.log('🔑 Resetting password with token');
-      
-      const response = await api.post('/authentication/reset-password', {
+      const response: AxiosResponse<AuthResponse> = await api.post('/authentication/reset-password', {
         token,
-        newPassword: password,
+        newPassword,
       });
-      
+      console.log('Password reset successful');
       return response.data;
     } catch (error: any) {
-      console.error('❌ Reset password error:', error);
-      
-      if (error.response?.status === 400) {
-        throw new Error('Link đã hết hạn hoặc không hợp lệ!');
-      }
-      
-      const errorMsg = error.response?.data?.message || 'Đặt lại mật khẩu thất bại!';
+      const errorMsg = error.response?.status === 400
+        ? 'Link đã hết hạn hoặc không hợp lệ!'
+        : (error.response?.data?.message || 'Đặt lại mật khẩu thất bại!');
+      console.error('Reset password error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // Xác minh email
+  // ===================== XÁC MINH EMAIL =====================
   async verifyEmail(token: string): Promise<AuthResponse> {
     try {
-      console.log('🔍 Verifying email with token:', token);
-      
-      const response = await api.get('/authentication/verify-email', {
+      const response: AxiosResponse<AuthResponse> = await api.get('/authentication/verify-email', {
         params: { token },
       });
-      
-      console.log('✅ Verify response:', response.data);
-      
-      if (typeof response.data.success !== 'boolean') {
-        console.warn('⚠️ Response missing success field:', response.data);
-      }
-      
+      console.log('Email verified');
       return response.data;
     } catch (error: any) {
-      console.error('❌ Verify email error:', error);
-      
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        
-        if (errorData.success === false) {
-          throw new Error(errorData.message || 'Xác minh email thất bại!');
-        }
-      }
-      
-      if (error.code === 'ECONNABORTED') {
-        throw new Error('Hết thời gian chờ. Vui lòng thử lại!');
-      }
-      
-      if (error.code === 'ERR_NETWORK') {
-        throw new Error('Không thể kết nối đến server. Vui lòng kiểm tra kết nối!');
-      }
-      
       const errorMsg = error.response?.data?.message || 'Xác minh email thất bại!';
+      console.error('Verify email error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // Gửi lại email xác minh
+  // ===================== GỬI LẠI EMAIL XÁC MINH =====================
   async resendVerifyEmail(email: string): Promise<AuthResponse> {
     try {
-      const response = await api.post('/authentication/resend-verify', {
-        email,
-      });
+      const response: AxiosResponse<AuthResponse> = await api.post('/authentication/resend-verify', { email });
+      console.log('Verification email resent');
       return response.data;
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || 'Gửi lại email thất bại!';
       console.error('Resend verify error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // ✅ Đổi mật khẩu (khi đã đăng nhập) - FIXED
+  // ===================== ĐỔI MẬT KHẨU =====================
   async changePassword(currentPassword: string, newPassword: string, confirmNewPassword?: string): Promise<AuthResponse> {
     try {
-      const payload: any = {
-        currentPassword,  // ✅ Đúng tên field với backend
-        newPassword,
-      };
-      
-      // ✅ Thêm confirmNewPassword nếu có (optional)
-      if (confirmNewPassword) {
-        payload.confirmNewPassword = confirmNewPassword;
-      }
-      
-      const response = await api.put('/authentication/change-password', payload);
-      
+      const payload: ChangePasswordData = { currentPassword, newPassword };
+      if (confirmNewPassword) payload.confirmNewPassword = confirmNewPassword;
+
+      const response: AxiosResponse<AuthResponse> = await api.put('/authentication/change-password', payload);
+      console.log('Password changed');
       return response.data;
     } catch (error: any) {
-      console.error('❌ Change password error:', error);
-      
-      if (error.response?.status === 401) {
-        throw new Error('Mật khẩu hiện tại không đúng!');
-      }
-      
-      const errorMsg = error.response?.data?.message || 'Đổi mật khẩu thất bại!';
+      const errorMsg = error.response?.status === 401
+        ? 'Mật khẩu hiện tại không đúng!'
+        : (error.response?.data?.message || 'Đổi mật khẩu thất bại!');
+      console.error('Change password error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // ✅ Lấy thông tin user hiện tại từ API
+  // ===================== LẤY USER TỪ API =====================
   async fetchCurrentUser(): Promise<User> {
     try {
-      const response = await api.get('/authentication/me');
-      
+      const response: AxiosResponse<{ success: boolean; user: User }> = await api.get('/authentication/me');
+
       if (response.data.success && response.data.user) {
-        // Cập nhật localStorage
-        localStorage.setItem('user', JSON.stringify(response.data.user));
+        this.setCurrentUser(response.data.user);
+        console.log('User fetched:', response.data.user.email);
         return response.data.user;
       }
-      
-      throw new Error('Không thể lấy thông tin user');
+
+      throw new Error('Không thể lấy thông tin người dùng');
     } catch (error: any) {
-      console.error('❌ Fetch current user error:', error);
-      
       if (error.response?.status === 401) {
-        // Token không hợp lệ, logout
         this.logout();
+        throw new Error('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại!');
       }
-      
-      const errorMsg = error.response?.data?.message || 'Không thể lấy thông tin người dùng!';
+      const errorMsg = error.response?.data?.message || 'Lấy thông tin thất bại!';
+      console.error('Fetch user error:', errorMsg);
       throw new Error(errorMsg);
     }
-  },
+  }
 
-  // Đăng xuất
-  logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  // ===================== ĐĂNG XUẤT =====================
+  logout(): void {
+    this.clearAuth();
+    console.log('Logged out');
     window.location.href = '/login';
-  },
+  }
 
-  // Lấy token
+  // ===================== TOKEN & USER STORAGE =====================
+  setToken(token: string): void {
+    localStorage.setItem('token', token);
+  }
+
   getToken(): string | null {
     return localStorage.getItem('token');
-  },
+  }
 
-  // Lấy thông tin user từ localStorage
+  removeToken(): void {
+    localStorage.removeItem('token');
+  }
+
+  setCurrentUser(user: User): void {
+    localStorage.setItem('user', JSON.stringify(user));
+  }
+
   getCurrentUser(): User | null {
     try {
       const userStr = localStorage.getItem('user');
-      return userStr ? JSON.parse(userStr) : null;
-    } catch (error) {
-      console.error('Error parsing user data:', error);
+      return userStr ? JSON.parse(userStr) as User : null;
+    } catch {
       return null;
     }
-  },
+  }
 
-  // Kiểm tra đã đăng nhập
+  removeCurrentUser(): void {
+    localStorage.removeItem('user');
+  }
+
+  clearAuth(): void {
+    this.removeToken();
+    this.removeCurrentUser();
+  }
+
+  // ===================== AUTH STATUS =====================
   isAuthenticated(): boolean {
-    return !!this.getToken();
-  },
+    const token = this.getToken();
+    const user = this.getCurrentUser();
+    return !!(token && user && this.isTokenValid());
+  }
 
-  // ✅ Kiểm tra role
+  isTokenValid(): boolean {
+    const token = this.getToken();
+    if (!token) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return Date.now() < (payload.exp * 1000);
+    } catch {
+      return false;
+    }
+  }
+
+  // ===================== ROLE CHECKS =====================
   hasRole(role: string): boolean {
     const user = this.getCurrentUser();
-    return user?.role === role;
-  },
+    return user?.role.toLowerCase() === role.toLowerCase();
+  }
 
-  // ✅ Kiểm tra có phải admin
   isAdmin(): boolean {
     return this.hasRole('Admin');
-  },
-};
+  }
 
+  isCustomer(): boolean {
+    return this.hasRole('Customer');
+  }
+
+  isStaff(): boolean {
+    return this.hasRole('Staff');
+  }
+
+  getRole(): string | null {
+    return this.getCurrentUser()?.role || null;
+  }
+
+  getUserId(): number | null {
+    return this.getCurrentUser()?.userId || null;
+  }
+
+  getEmail(): string | null {
+    return this.getCurrentUser()?.email || null;
+  }
+
+  // ===================== CẬP NHẬT USER LOCAL =====================
+  updateUserLocal(updatedData: Partial<User>): void {
+    const current = this.getCurrentUser();
+    if (!current) return;
+
+    const updated: User = { ...current, ...updatedData };
+    this.setCurrentUser(updated);
+    console.log('User updated locally');
+  }
+}
+
+// ===================== EXPORT SINGLETON =====================
+const authService = AuthService.getInstance();
 export default authService;
+export { authService };
