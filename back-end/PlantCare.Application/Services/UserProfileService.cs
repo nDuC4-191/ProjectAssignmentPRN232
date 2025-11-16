@@ -29,7 +29,7 @@ namespace PlantCare.Application.Services
                 Phone = user.Phone,
                 Address = user.Address,
                 AvatarUrl = user.AvatarUrl,
-                Email = user.Email
+               
             };
         }
 
