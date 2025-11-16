@@ -1,5 +1,4 @@
-﻿// Path: PlantCare.Application/Services/UserPlantService.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using PlantCare.Application.DTOs.UserPlant;
 using PlantCare.Application.Interfaces;
 using PlantCare.Infrastructure.Models;
@@ -97,9 +96,10 @@ namespace PlantCare.Application.Services
 
         public async Task<UserPlantDTO> AddUserPlantAsync(int userId, CreateUserPlantDTO dto)
         {
+            // ⭐ Validate ProductID
             var product = await _context.Products.FindAsync(dto.ProductID);
             if (product == null)
-                throw new Exception("Sản phẩm không tồn tại");
+                throw new ArgumentException("Sản phẩm không tồn tại");
 
             var userPlant = new UserPlant
             {
@@ -130,6 +130,9 @@ namespace PlantCare.Application.Services
                 PlantedDate = userPlant.PlantedDate,
                 Status = userPlant.Status,
                 ImageUrl = product.ImageUrl,
+                Difficulty = product.Difficulty,
+                LightRequirement = product.LightRequirement,
+                WaterRequirement = product.WaterRequirement,
                 CreatedAt = userPlant.CreatedAt ?? DateTime.UtcNow
             };
         }
@@ -142,8 +145,12 @@ namespace PlantCare.Application.Services
             if (userPlant == null)
                 return false;
 
-            if (!string.IsNullOrEmpty(dto.Nickname))
+            // ⭐ Sửa logic: chỉ update field nào có giá trị
+            if (!string.IsNullOrWhiteSpace(dto.Nickname))
                 userPlant.Nickname = dto.Nickname;
+
+            if (dto.PlantedDate.HasValue) // ⭐ Thêm update PlantedDate
+                userPlant.PlantedDate = dto.PlantedDate;
 
             if (dto.LastWatered.HasValue)
                 userPlant.LastWatered = dto.LastWatered.Value;
@@ -151,10 +158,10 @@ namespace PlantCare.Application.Services
             if (dto.LastFertilized.HasValue)
                 userPlant.LastFertilized = dto.LastFertilized.Value;
 
-            if (!string.IsNullOrEmpty(dto.Notes))
+            if (!string.IsNullOrWhiteSpace(dto.Notes))
                 userPlant.Notes = dto.Notes;
 
-            if (!string.IsNullOrEmpty(dto.Status))
+            if (!string.IsNullOrWhiteSpace(dto.Status))
                 userPlant.Status = dto.Status;
 
             userPlant.UpdatedAt = DateTime.UtcNow;
@@ -172,7 +179,12 @@ namespace PlantCare.Application.Services
             if (userPlant == null)
                 return false;
 
-            _context.Reminders.RemoveRange(userPlant.Reminders);
+            // ⭐ Xóa reminders trước khi xóa plant
+            if (userPlant.Reminders != null && userPlant.Reminders.Any())
+            {
+                _context.Reminders.RemoveRange(userPlant.Reminders);
+            }
+
             _context.UserPlants.Remove(userPlant);
             await _context.SaveChangesAsync();
             return true;
@@ -189,6 +201,15 @@ namespace PlantCare.Application.Services
 
             userPlant.LastWatered = DateOnly.FromDateTime(wateredDate);
             userPlant.UpdatedAt = DateTime.UtcNow;
+
+            // ⭐ Xóa reminder tưới nước cũ trước khi tạo mới
+            var oldWateringReminders = await _context.Reminders
+                .Where(r => r.UserPlantId == userPlantId &&
+                           r.ReminderType == "Tưới" &&
+                           r.IsCompleted == false)
+                .ToListAsync();
+
+            _context.Reminders.RemoveRange(oldWateringReminders);
 
             // Tạo reminder cho lần tưới tiếp theo
             var nextWateringDate = CalculateNextWateringDate(wateredDate, userPlant.Product.WaterRequirement);
@@ -211,6 +232,15 @@ namespace PlantCare.Application.Services
             userPlant.LastFertilized = DateOnly.FromDateTime(fertilizedDate);
             userPlant.UpdatedAt = DateTime.UtcNow;
 
+            // ⭐ Xóa reminder bón phân cũ trước khi tạo mới
+            var oldFertilizingReminders = await _context.Reminders
+                .Where(r => r.UserPlantId == userPlantId &&
+                           r.ReminderType == "Bón phân" &&
+                           r.IsCompleted == false)
+                .ToListAsync();
+
+            _context.Reminders.RemoveRange(oldFertilizingReminders);
+
             // Tạo reminder cho lần bón phân tiếp theo (mặc định 30 ngày)
             var nextFertilizingDate = fertilizedDate.AddDays(30);
             await CreateReminderAsync(userPlantId, "Bón phân",
@@ -222,6 +252,11 @@ namespace PlantCare.Application.Services
 
         public async Task<bool> UpdatePlantStatusAsync(int userPlantId, int userId, string status)
         {
+            // ⭐ Validate status
+            var validStatuses = new[] { "Đang sống", "Chết", "Đã tặng", "Đã bán" };
+            if (!validStatuses.Contains(status))
+                throw new ArgumentException($"Trạng thái không hợp lệ. Chỉ chấp nhận: {string.Join(", ", validStatuses)}");
+
             var userPlant = await _context.UserPlants
                 .FirstOrDefaultAsync(up => up.UserPlantId == userPlantId && up.UserId == userId);
 
@@ -242,30 +277,44 @@ namespace PlantCare.Application.Services
                 .Select(up => new UserPlantDTO
                 {
                     UserPlantID = up.UserPlantId,
+                    UserID = up.UserId,
+                    ProductID = up.ProductId,
                     ProductName = up.Product.ProductName,
                     Nickname = up.Nickname,
                     Status = up.Status,
                     ImageUrl = up.Product.ImageUrl,
-                    PlantedDate = up.PlantedDate
+                    PlantedDate = up.PlantedDate,
+                    LastWatered = up.LastWatered,
+                    LastFertilized = up.LastFertilized,
+                    CreatedAt = up.CreatedAt ?? DateTime.UtcNow
                 })
+                .OrderByDescending(up => up.CreatedAt)
                 .ToListAsync();
         }
 
         public async Task<List<UserPlantDTO>> SearchUserPlantsAsync(int userId, string searchTerm)
         {
+            // ⭐ Trim và lowercase để search tốt hơn
+            var term = searchTerm.Trim().ToLower();
+
             return await _context.UserPlants
                 .Include(up => up.Product)
                 .Where(up => up.UserId == userId &&
-                    ((up.Nickname != null && up.Nickname.Contains(searchTerm)) ||
-                     up.Product.ProductName.Contains(searchTerm)))
+                    ((up.Nickname != null && up.Nickname.ToLower().Contains(term)) ||
+                     up.Product.ProductName.ToLower().Contains(term)))
                 .Select(up => new UserPlantDTO
                 {
                     UserPlantID = up.UserPlantId,
+                    UserID = up.UserId,
+                    ProductID = up.ProductId,
                     ProductName = up.Product.ProductName,
                     Nickname = up.Nickname,
                     Status = up.Status,
-                    ImageUrl = up.Product.ImageUrl
+                    ImageUrl = up.Product.ImageUrl,
+                    PlantedDate = up.PlantedDate,
+                    CreatedAt = up.CreatedAt ?? DateTime.UtcNow
                 })
+                .OrderByDescending(up => up.CreatedAt)
                 .ToListAsync();
         }
 
@@ -282,21 +331,31 @@ namespace PlantCare.Application.Services
                 TotalPlants = plants.Count,
                 AlivePlants = plants.Count(p => p.Status == "Đang sống"),
                 DeadPlants = plants.Count(p => p.Status == "Chết"),
-                PlantsNeedWatering = plants.Count(p => !p.LastWatered.HasValue ||
-                    (today.DayNumber - p.LastWatered.Value.DayNumber) >= 7),
-                PlantsNeedFertilizing = plants.Count(p => !p.LastFertilized.HasValue ||
-                    (today.DayNumber - p.LastFertilized.Value.DayNumber) >= 30)
+                // ⭐ Tính cây cần tưới: nếu chưa tưới lần nào HOẶC đã quá 7 ngày
+                PlantsNeedWatering = plants.Count(p =>
+                    p.Status == "Đang sống" && // Chỉ đếm cây đang sống
+                    (!p.LastWatered.HasValue || (today.DayNumber - p.LastWatered.Value.DayNumber) >= 7)),
+                // ⭐ Tính cây cần bón phân: nếu chưa bón lần nào HOẶC đã quá 30 ngày
+                PlantsNeedFertilizing = plants.Count(p =>
+                    p.Status == "Đang sống" && // Chỉ đếm cây đang sống
+                    (!p.LastFertilized.HasValue || (today.DayNumber - p.LastFertilized.Value.DayNumber) >= 30))
             };
         }
 
-        // Helper methods
+        // ============================================
+        // HELPER METHODS
+        // ============================================
+
         private async Task CreateDefaultRemindersAsync(int userPlantId, Product product)
         {
             var wateringDays = GetWateringInterval(product.WaterRequirement);
             var nextWatering = DateTime.UtcNow.AddDays(wateringDays);
 
-            await CreateReminderAsync(userPlantId, "Tưới", $"Đến lúc tưới {product.ProductName}", nextWatering);
-            await CreateReminderAsync(userPlantId, "Bón phân", $"Đến lúc bón phân cho {product.ProductName}",
+            await CreateReminderAsync(userPlantId, "Tưới",
+                $"Đến lúc tưới {product.ProductName}", nextWatering);
+
+            await CreateReminderAsync(userPlantId, "Bón phân",
+                $"Đến lúc bón phân cho {product.ProductName}",
                 DateTime.UtcNow.AddDays(30));
         }
 
@@ -322,12 +381,16 @@ namespace PlantCare.Application.Services
 
         private int GetWateringInterval(string waterRequirement)
         {
-            return waterRequirement switch
+            // ⭐ Thêm null check
+            if (string.IsNullOrWhiteSpace(waterRequirement))
+                return 7; // Mặc định 7 ngày
+
+            return waterRequirement.Trim() switch
             {
                 "Ít" => 10,
                 "Vừa" => 5,
                 "Nhiều" => 2,
-                _ => 7
+                _ => 7 // Default
             };
         }
     }

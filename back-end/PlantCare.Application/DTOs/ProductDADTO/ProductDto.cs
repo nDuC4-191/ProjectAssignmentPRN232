@@ -1,4 +1,6 @@
-﻿using System;
+﻿// PlantCare.Application/DTOs/ProductDADTO/ProductDADto.cs
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,6 +20,7 @@ namespace PlantCare.Application.DTOs.ProductDADTO
         public string LightRequirement { get; set; }
         public string WaterRequirement { get; set; }
         public string SoilType { get; set; }
+        public string ImageUrl { get; set; }  // ⭐ THÊM DÒNG NÀY
     }
 
     public class CreateUpdateProductDADto
@@ -31,5 +34,6 @@ namespace PlantCare.Application.DTOs.ProductDADTO
         public string LightRequirement { get; set; }
         public string WaterRequirement { get; set; }
         public string SoilType { get; set; }
+        public string ImageUrl { get; set; }  // ⭐ THÊM DÒNG NÀY (nếu muốn admin có thể upload ảnh)
     }
 }
