@@ -26,7 +26,7 @@ interface PlantWikiListDTO {
   difficulty: string;
 }
 
-const API_BASE_URL = "http://localhost:7002/api";
+const API_BASE_URL = "http://localhost:5239/api";
 
 const CareWikiPage: React.FC = () => {
   const [plants, setPlants] = useState<PlantWikiListDTO[]>([]);

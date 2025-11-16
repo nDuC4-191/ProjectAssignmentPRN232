@@ -1,7 +1,7 @@
 // src/pages/PlantRecommendationPage.tsx
 import React, { useState } from 'react';
-import { careSuggestionApi } from '../services/api.service';
-import type { UserConditionDTO, ProductSuggestionDTO } from '../types/userPlant.types';
+import { careSuggestionApi } from "../../services/api.service";
+import type { UserConditionDTO, ProductSuggestionDTO } from "../../types/userPlant.types";
 
 const PlantRecommendationPage: React.FC = () => {
   const [condition, setCondition] = useState<UserConditionDTO>({

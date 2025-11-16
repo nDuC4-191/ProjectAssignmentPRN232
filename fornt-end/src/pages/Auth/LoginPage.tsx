@@ -1,16 +1,41 @@
 // src/pages/Auth/LoginPage.tsx
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Lấy URL trước đó (nếu có)
+  const from = (location.state as any)?.from?.pathname || null;
+
+  // Helper function để decode JWT token
+  const decodeToken = (token: string) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,11 +44,60 @@ const LoginPage: React.FC = () => {
 
     try {
       const response = await authService.login(formData);
-      alert('✅ ' + response.message);
       
-      // Redirect based on role (if you have role in token)
-      navigate('/'); // or navigate('/admin') for admin
+      // Lấy token từ response hoặc localStorage
+      const token = response.token || localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Token không tồn tại');
+      }
+
+      // Decode token để lấy user info
+      const decoded = decodeToken(token);
+      
+      // Lấy role từ claim path của .NET (dài)
+      const roleClaimPath = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role';
+      const userIdClaimPath = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier';
+      
+      const userRole = (
+        decoded?.[roleClaimPath] || 
+        decoded?.role || 
+        'customer'
+      ).toLowerCase();
+      
+      // Lấy userId từ nameidentifier claim
+      const userId = decoded?.[userIdClaimPath] || 
+                     decoded?.userId || 
+                     decoded?.sub;
+      
+      // Tạo user object
+      const user = {
+        userId: userId,
+        email: decoded?.email,
+        fullName: decoded?.fullName || decoded?.name || decoded?.email?.split('@')[0],
+        role: userRole,
+      };
+
+      console.log('🔍 Decoded token:', decoded);
+      console.log('🔍 User object:', user);
+      console.log('🔍 User role:', userRole);
+
+      // Gọi login từ context để lưu vào state
+      login(token, user);
+
+      alert('✅ ' + response.message);
+
+      // Redirect logic
+      if (userRole === 'admin') {
+        console.log('🔍 Redirecting to admin dashboard');
+        navigate('/admin/dashboard', { replace: true });
+      } else {
+        console.log('🔍 Redirecting to:', from || '/');
+        // Customer: Quay về trang trước đó (ví dụ /cart) hoặc trang chủ
+        navigate(from || '/', { replace: true });
+      }
     } catch (err: any) {
+      console.error('❌ Login error:', err);
       setError(err.message || 'Email hoặc mật khẩu không đúng!');
     } finally {
       setLoading(false);
@@ -128,7 +202,8 @@ const LoginPage: React.FC = () => {
 
         {/* Quick Login (for testing) */}
         <div className="mt-4 text-center text-sm text-gray-500">
-          <p>Demo: admin@plantcare.com / Admin@12345</p>
+          <p>Demo Admin: admin@plantcare.com / Admin@12345</p>
+          <p>Demo Customer: customer@plantcare.com / Customer@12345</p>
         </div>
       </div>
     </div>

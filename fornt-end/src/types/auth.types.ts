@@ -1,21 +1,50 @@
-// Path: src/types/auth.types.ts
+// src/types/auth.types.ts
 
-// (Dựa trên Model User.cs)
 export interface User {
-  userId: number;
-  fullName: string;
+  id: number;
   email: string;
-  role: string;
+  fullName: string;
   phone?: string;
   address?: string;
+  avatarUrl?: string;
+  role: string;
+  isActive?: boolean;
+  isEmailVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Định nghĩa hình dạng của AuthContext
 export interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
-  isLoading: boolean; 
+  updateUser: (updatedData: Partial<User>) => void; // ✅ Thêm dòng này
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  token: string;
+  user: User;
+}
+
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  user?: User;
 }

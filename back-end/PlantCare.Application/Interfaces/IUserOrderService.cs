@@ -14,5 +14,6 @@ namespace PlantCare.Application.Interfaces
         Task<int> CreateOrderAsync(int userId, CreateOrderDTO dto);
         Task<bool> UpdateStatusAsync(int orderId, string status);
         Task<bool> CancelOrderAsync(int userId, int orderId);
+
     }
 }

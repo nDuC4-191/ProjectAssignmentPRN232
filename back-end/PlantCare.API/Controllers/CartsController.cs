@@ -65,5 +65,13 @@ namespace PlantCare.API.Controllers
             return Ok(cart);
 
         }
+        // DELETE: api/Carts (Xóa toàn bộ giỏ hàng)
+        [HttpDelete]
+        public async Task<IActionResult> ClearCart()
+        {
+            var userId = GetCurrentUserId();
+            await _cartService.ClearCartAsync(userId);
+            return Ok(new { success = true, message = "Đã xóa giỏ hàng" });
+        }
     }
 }

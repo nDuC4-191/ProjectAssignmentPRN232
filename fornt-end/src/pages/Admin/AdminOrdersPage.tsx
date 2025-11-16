@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { orderApi } from "../../services/orderApi.service";
-import type { OrderListDTO, OrderStatisticsDTO, OrderStatus } from "../../types/order.types";
+import type { OrderListDTO, OrderStatisticsDTO } from "../../types/order.types";
 import { ORDER_STATUSES } from "../../types/order.types";
 
 const AdminOrdersPage: React.FC = () => {

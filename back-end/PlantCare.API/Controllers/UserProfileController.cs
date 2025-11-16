@@ -1,56 +1,127 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PlantCare.Application.DTOs.UserProfile;
 using PlantCare.Application.Interfaces;
+using PlantCare.Infrastructure.Models;
 using System.Security.Claims;
 
 namespace PlantCare.API.Controllers
 {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     [Authorize]
     public class UserProfileController : ControllerBase
     {
         private readonly IUserProfileService _profileService;
+        private readonly PlantCareContext _context;
 
-        public UserProfileController(IUserProfileService profileService)
+        public UserProfileController(IUserProfileService profileService, PlantCareContext context)
         {
             _profileService = profileService;
+            _context = context;
         }
 
-        private int GetUserIdFromToken()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-
-            if (string.IsNullOrEmpty(userId))
-                throw new Exception("User ID claim missing in token");
-
-            return int.Parse(userId);
-        }
-
+        // GET: api/UserProfile
         [HttpGet]
         public async Task<IActionResult> GetProfile()
         {
-            var userId = GetUserIdFromToken();
-            var profile = await _profileService.GetProfileAsync(userId);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Không tìm thấy thông tin người dùng" });
+            }
 
-            if (profile == null) return NotFound("User not found");
+            try
+            {
+                var profile = await _profileService.GetProfileAsync(userId);
+                if (profile == null)
+                {
+                    return NotFound(new { message = "Không tìm thấy thông tin người dùng" });
+                }
 
-            return Ok(profile);
+                return Ok(profile);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Lỗi khi lấy thông tin: " + ex.Message });
+            }
         }
 
+        // PUT: api/UserProfile
         [HttpPut]
-        public async Task<IActionResult> UpdateProfile([FromForm] ProfileDTO request)
+        public async Task<IActionResult> UpdateProfile([FromBody] ProfileDTO profileDto)
         {
-            var userId = GetUserIdFromToken();
-            var updated = await _profileService.UpdateProfileAsync(userId, request);
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Không tìm thấy thông tin người dùng" });
+            }
 
-            if (!updated)
-                return BadRequest("Update failed");
+            try
+            {
+                var success = await _profileService.UpdateProfileAsync(userId, profileDto);
+                if (!success)
+                {
+                    return BadRequest(new { message = "Cập nhật thông tin thất bại" });
+                }
 
-            return Ok("Profile updated successfully");
+                return Ok(new { success = true, message = "Cập nhật thông tin thành công" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Lỗi khi cập nhật: " + ex.Message });
+            }
+        }
 
+        // GET: api/UserProfile/stats
+        [HttpGet("stats")]
+        public async Task<IActionResult> GetProfileStats()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out int userId))
+            {
+                return Unauthorized(new { message = "Không tìm thấy thông tin người dùng" });
+            }
+
+            try
+            {
+                // Đếm số cây của user
+                var plantsCount = await _context.UserPlants
+                    .Where(p => p.UserId == userId)
+                    .CountAsync();
+
+                // Đếm số đơn hàng đã hoàn thành
+                var ordersCount = await _context.Orders
+                    .Where(o => o.UserId == userId &&
+                               (o.Status == "Completed" ||
+                                o.Status == "completed" ||
+                                o.Status == "Delivered" ||
+                                o.Status == "delivered"))
+                    .CountAsync();
+
+                // Lấy thông tin user để lấy CreatedAt
+                var user = await _context.Users.FindAsync(userId);
+
+                return Ok(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        plantsCount = plantsCount,
+                        ordersCount = ordersCount,
+                        createdAt = user?.CreatedAt
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Lỗi khi lấy thống kê: " + ex.Message
+                });
+            }
         }
     }
 }

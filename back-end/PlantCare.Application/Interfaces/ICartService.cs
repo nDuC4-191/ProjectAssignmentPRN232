@@ -23,5 +23,6 @@ namespace PlantCare.Application.Interfaces
 
         /// Xóa sạch giỏ hàng (thường dùng sau khi thanh toán)
         Task<bool> ClearCartAsync(int userId);
+
     }
 }

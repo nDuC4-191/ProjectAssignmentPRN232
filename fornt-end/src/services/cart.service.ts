@@ -1,29 +1,72 @@
+// src/services/cart.service.ts
 import api from './api.service';
-import type { Cart, AddToCartDTO, UpdateCartDTO } from '../types/cart.types';
 
-const getMyCart = async (): Promise<Cart> => {
-    const res = await api.get('/cart');
-    return res.data;
-};
+export interface CartItem {
+  id: number;
+  plantId: number;
+  plantName: string;
+  plantImage?: string;
+  price: number;
+  quantity: number;
+}
 
-const addItem = async (item: AddToCartDTO): Promise<Cart> => {
-    const res = await api.post('/cart/add', item);
-    return res.data;
-};
+export interface CartResponse {
+  items: CartItem[];
+  grandTotal: number;
+}
 
-const updateItem = async (item: UpdateCartDTO): Promise<Cart> => {
-    const res = await api.put('/cart/update', item);
-    return res.data;
-};
-
-const removeItem = async (productId: number): Promise<Cart> => {
-    const res = await api.delete(`/cart/remove/${productId}`);
-    return res.data;
-};
-
+// ✅ Sửa cho đúng với backend .NET
 export const cartService = {
-    getMyCart,
-    addItem,
-    updateItem,
-    removeItem
+  // GET: api/Carts
+  getMyCart: async (): Promise<CartItem[]> => {
+    try {
+      const response = await api.get('/Carts');
+      const data = response.data?.data || response.data;
+      return data?.items || [];
+    } catch {
+      return [];
+    }
+  },
+
+  // POST: api/Carts/add
+  addToCart: async (plantId: number, quantity: number): Promise<void> => {
+    try {
+      await api.post('/Carts/add', { 
+        productId: plantId, 
+        quantity: quantity 
+      });
+    } catch {
+      // Silent fail
+    }
+  },
+
+  // PUT: api/Carts/update
+  updateQuantity: async (itemId: number, quantity: number): Promise<void> => {
+    try {
+      await api.put('/Carts/update', { 
+        productId: itemId, 
+        newQuantity: quantity 
+      });
+    } catch {
+      // Silent fail
+    }
+  },
+
+  // DELETE: api/Carts/remove/{productId}
+  removeFromCart: async (productId: number): Promise<void> => {
+    try {
+      await api.delete(`/Carts/remove/${productId}`);
+    } catch {
+      // Silent fail
+    }
+  },
+
+  // Xóa toàn bộ giỏ hàng (nếu backend có endpoint này)
+  clearCart: async (): Promise<void> => {
+    try {
+      await api.delete('/Carts');
+    } catch {
+      // Silent fail
+    }
+  },
 };

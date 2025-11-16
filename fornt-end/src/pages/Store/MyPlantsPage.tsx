@@ -1,7 +1,7 @@
 // src/pages/MyPlantsPage.tsx
 import React, { useState, useEffect } from 'react';
-import { userPlantApi } from '../services/api.service';
-import type { UserPlantDTO, UserPlantStatisticsDTO } from '../types/userPlant.types';
+import { userPlantApi } from "../../services/api.service";
+import type { UserPlantDTO, UserPlantStatisticsDTO } from "../../types/userPlant.types";
 import { Link } from 'react-router-dom';
 
 const MyPlantsPage: React.FC = () => {
