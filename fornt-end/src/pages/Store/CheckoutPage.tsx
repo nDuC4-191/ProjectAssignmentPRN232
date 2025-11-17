@@ -80,42 +80,84 @@ const CheckoutPage: React.FC = () => {
             paymentMethod: paymentMethod,
             notes: notes.trim() || undefined
         };
+try {
+            // ✅ SỬA LOGIC TRONG KHỐI NÀY
+            const response = await orderService.checkout(orderData);
+            const orderResponse = response as any;
+            
+            // === LOGIC MỚI: PHÂN LUỒNG THANH TOÁN ===
 
-        try {
-            const response = await orderService.checkout(orderData);
-            
-            const orderResponse = response as any;
-            const orderId = orderResponse?.data?.orderId || 
-                           orderResponse?.orderId || 
-                           orderResponse?.data?.id || 
-                           orderResponse?.id;
-            
-            await clearCart();
-            
-            if (orderId) {
-                navigate(`/order-success/${orderId}`);
-            } else {
-                alert('Đặt hàng thành công!');
-                navigate('/orders');
+            // TRƯỜNG HỢP 1: VNPAY (Backend trả về paymentUrl)
+            if (orderResponse.paymentUrl) {
+                await clearCart();
+                // Chuyển hướng người dùng đến cổng VNPay
+                window.location.href = orderResponse.paymentUrl;
+            } 
+            // TRƯỜNG HỢP 2: COD (Backend trả về data.orderId)
+            else {
+                // Đây là logic cũ của bạn để lấy orderId, rất tốt
+                const orderId = orderResponse?.data?.orderId || orderResponse?.orderId || orderResponse?.data?.id || orderResponse?.id;
+                await clearCart();
+                if (orderId) {
+                    navigate(`/order-success/${orderId}`);
+
+                } else {
+                    // Fallback nếu không tìm thấy orderId
+                    alert('Đặt hàng thành công!');
+                    navigate('/orders');
+                }
             }
         } catch (error: any) {
+            // (Phần catch của bạn đã đúng, giữ nguyên)
             console.error('Lỗi khi thanh toán:', error);
-            
             const errorData = error.response?.data;
             let errorMessage = 'Đã xảy ra lỗi khi thanh toán. Vui lòng thử lại.';
-            
             if (errorData?.message) {
                 errorMessage = errorData.message;
             } else if (errorData?.errors) {
                 const errors = Object.values(errorData.errors).flat();
                 errorMessage = errors.join('\n');
-            }
-            
+             }
             alert(errorMessage);
         } finally {
             setLoading(false);
         }
     };
+    //     try {
+    //         const response = await orderService.checkout(orderData);
+            
+    //         const orderResponse = response as any;
+    //         const orderId = orderResponse?.data?.orderId || 
+    //                        orderResponse?.orderId || 
+    //                        orderResponse?.data?.id || 
+    //                        orderResponse?.id;
+            
+    //         await clearCart();
+            
+    //         if (orderId) {
+    //             navigate(`/order-success/${orderId}`);
+    //         } else {
+    //             alert('Đặt hàng thành công!');
+    //             navigate('/orders');
+    //         }
+    //     } catch (error: any) {
+    //         console.error('Lỗi khi thanh toán:', error);
+            
+    //         const errorData = error.response?.data;
+    //         let errorMessage = 'Đã xảy ra lỗi khi thanh toán. Vui lòng thử lại.';
+            
+    //         if (errorData?.message) {
+    //             errorMessage = errorData.message;
+    //         } else if (errorData?.errors) {
+    //             const errors = Object.values(errorData.errors).flat();
+    //             errorMessage = errors.join('\n');
+    //         }
+            
+    //         alert(errorMessage);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
 
     if (!cartItems || cartItems.length === 0) {
         return (
